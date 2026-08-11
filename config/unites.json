@@ -1,0 +1,120 @@
+[
+  {
+    "id": "VIL",
+    "name": "Village Olympique Napoli",
+    "zones": [
+      {
+        "name": "Bloc A",
+        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"]
+      },
+      {
+        "name": "Bloc B",
+        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"]
+      },
+      {
+        "name": "Bloc C",
+        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"]
+      },
+      {
+        "name": "Bloc D",
+        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"]
+      },
+      {
+        "name": "Bloc E",
+        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"]
+      },
+      {
+        "name": "Bloc F",
+        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"]
+      },
+      {
+        "name": "Bloc G",
+        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"]
+      },
+      {
+        "name": "Restaurant",
+        "subzones": ["Cuisine", "Salle", "Chambre froide", "Réserve", "Plonge"]
+      },
+      {
+        "name": "Administration",
+        "subzones": ["Bureaux", "Accueil", "Salle de réunion"]
+      }
+    ]
+  },
+  {
+    "id": "PIS",
+    "name": "Piscine",
+    "zones": [
+      {
+        "name": "Bassin olympique 50 m (intérieur)",
+        "subzones": ["Zone bassin", "Plots de départ", "Échelles", "Plongeoir", "Lignes d'eau"]
+      },
+      {
+        "name": "Bassin d'échauffement 25 m",
+        "subzones": ["Zone bassin", "Plots de départ", "Plots d'affichage"]
+      },
+      {
+        "name": "Bassin olympique 50 m extérieur (réplique)",
+        "subzones": ["Zone bassin", "Plages", "Échelles"]
+      },
+      {
+        "name": "Zones techniques",
+        "subzones": ["Local de filtration/traitement d'eau (chloration, régulation pH)", "Chaufferie/échangeurs", "Local pompes", "Déshumidification/CTA", "Plots de départ", "Gradins", "Vestiaires", "Douches", "Infirmerie", "Poste de secours/MNS"]
+      }
+    ]
+  },
+  {
+    "id": "OMN",
+    "name": "Salle Omnisports",
+    "zones": [
+      {
+        "name": "Général",
+        "subzones": ["Aire de jeu principale", "Tribunes", "Vestiaires (équipes + arbitres)", "Bureaux", "Sanitaires publics", "Accès/issues de secours"]
+      },
+      {
+        "name": "Locaux techniques",
+        "subzones": ["Local électrique", "Régie éclairage", "Régie sonorisation"]
+      }
+    ]
+  },
+  {
+    "id": "ATH",
+    "name": "Terrain d'Athlétisme",
+    "zones": [
+      {
+        "name": "Général",
+        "subzones": ["Piste (revêtement synthétique)", "Aires de saut (longueur, hauteur, perche)", "Aires de lancer (poids, disque, javelot)", "Pelouse centrale", "Tribunes", "Vestiaires", "Local matériel", "Éclairage extérieur"]
+      }
+    ]
+  },
+  {
+    "id": "STD",
+    "name": "Stade 40 000 places (Miloud Hadfi)",
+    "zones": [
+      {
+        "name": "Aire de jeu",
+        "subzones": ["Pelouse", "Arrosage automatique", "Drainage"]
+      },
+      {
+        "name": "Tribunes par secteur",
+        "subzones": ["Tribune Nord", "Tribune Sud", "Tribune Est", "Tribune Ouest", "Tribune VIP/officielle", "Loges"]
+      },
+      {
+        "name": "Locaux sportifs et médias",
+        "subzones": ["Vestiaires équipes", "Vestiaires arbitres", "Salle de presse"]
+      },
+      {
+        "name": "Équipements et Réseaux",
+        "subzones": ["Tableau d'affichage/écran géant", "Éclairage (mâts/projecteurs)", "Sonorisation"]
+      },
+      {
+        "name": "Infrastructures externes",
+        "subzones": ["Parkings", "Billetterie", "Postes de sécurité/vidéosurveillance"]
+      },
+      {
+        "name": "Locaux techniques généraux",
+        "subzones": ["TGBT", "Groupe électrogène", "Chaufferie"]
+      }
+    ]
+  }
+]

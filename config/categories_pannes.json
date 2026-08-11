@@ -1,0 +1,17 @@
+[
+  {"id": "ELEC", "name": "Électricité"},
+  {"id": "PLUM", "name": "Hydraulique / Plomberie"},
+  {"id": "CVC", "name": "Chauffage, Ventilation, Climatisation (CVC)"},
+  {"id": "PISC", "name": "Piscine — Spécifique"},
+  {"id": "ASCE", "name": "Ascenseurs / Monte-charges"},
+  {"id": "SERR", "name": "Menuiserie / Serrurerie"},
+  {"id": "PEIN", "name": "Peinture / Revêtements"},
+  {"id": "BAT", "name": "Bâtiment / Structure / Étanchéité"},
+  {"id": "ARRO", "name": "Espaces verts / Arrosage"},
+  {"id": "INCE", "name": "Sécurité incendie"},
+  {"id": "SECU", "name": "Sûreté / Vidéosurveillance / Contrôle d'accès"},
+  {"id": "TEL", "name": "Réseaux IT / Télécom"},
+  {"id": "MOB", "name": "Mobilier / Équipements sportifs"},
+  {"id": "PROP", "name": "Nettoyage / Hygiène"},
+  {"id": "AUTR", "name": "Autre"}
+]
