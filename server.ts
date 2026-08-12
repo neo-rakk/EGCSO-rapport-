@@ -1571,6 +1571,9 @@ app.post("/api/reports/reconstruct", (req, res) => {
 
 // Start the server or link Vite development server
 async function startServer() {
+  // Serve static assets directory
+  app.use("/assets", express.static(path.join(process.cwd(), "assets")));
+
   // Vite middleware setup
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
