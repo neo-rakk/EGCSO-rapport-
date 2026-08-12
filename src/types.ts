@@ -69,4 +69,5 @@ export interface AppSettings {
   companyName: string;
   departmentName: string;
   referenceFormat: string;
+  githubRepo?: string;
 }

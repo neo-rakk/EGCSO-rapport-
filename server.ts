@@ -252,8 +252,8 @@ app.get("/api/update/check", async (req, res) => {
   }
 
   const settings = getSettings();
-  let repoOwner = "ghemri-info";
-  let repoName = "egcso-rapport";
+  let repoOwner = "neo-rakk";
+  let repoName = "EGCSO-rapport-";
   if (settings.githubRepo) {
     const parts = settings.githubRepo.split("/");
     if (parts.length === 2) {

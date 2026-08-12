@@ -48,6 +48,7 @@ export default function Settings({
   const [companyName, setCompanyName] = useState("");
   const [departmentName, setDepartmentName] = useState("");
   const [referenceFormat, setReferenceFormat] = useState("");
+  const [githubRepo, setGithubRepo] = useState("");
   
   // Tab views state ("assistant" or "json")
   const [unitsMode, setUnitsMode] = useState<"assistant" | "json">("assistant");
@@ -127,6 +128,7 @@ export default function Settings({
       setCompanyName(appSettings.companyName || "");
       setDepartmentName(appSettings.departmentName || "");
       setReferenceFormat(appSettings.referenceFormat || "");
+      setGithubRepo(appSettings.githubRepo || "neo-rakk/EGCSO-rapport-");
     }
   }, [appSettings]);
 
@@ -162,7 +164,8 @@ export default function Settings({
       storageRoot,
       companyName,
       departmentName,
-      referenceFormat
+      referenceFormat,
+      githubRepo
     });
 
     if (success) {
@@ -712,6 +715,20 @@ export default function Settings({
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-800"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1">Dépôt GitHub (Propriétaire/Dépôt) *</label>
+              <input
+                type="text"
+                value={githubRepo}
+                onChange={(e) => setGithubRepo(e.target.value)}
+                placeholder="Ex: neo-rakk/EGCSO-rapport-"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs font-bold text-slate-700 font-mono focus:outline-none focus:ring-1 focus:ring-emerald-800"
+              />
+              <span className="text-[10px] text-slate-400 font-medium">
+                Saisissez le chemin du dépôt GitHub sous la forme <code className="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-700">utilisateur/depot</code> pour la recherche automatique des mises à jour.
+              </span>
             </div>
 
             <div>
