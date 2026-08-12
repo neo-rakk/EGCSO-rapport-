@@ -30,6 +30,12 @@ jobs:
       - name: ⚙️ Compilation de production
         run: npm run build
 
+      - name: 🏷️ Synchronisation automatique du fichier VERSION
+        run: |
+          CLEAN_TAG=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          echo "$CLEAN_TAG" > VERSION
+          echo "Fichier VERSION mis à jour avec le tag : $CLEAN_TAG"
+
       - name: 📂 Préparation du pack de production pré-compilé
         run: |
           # Création d'un dossier temporaire propre pour la distribution

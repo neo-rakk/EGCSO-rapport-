@@ -146,7 +146,7 @@ async function startUpdate() {
 
   // 2. QUERY GITHUB API FOR LATEST VERSION
   console.log("\n[2/6] 🔍 Recherche de la dernière version sur GitHub...");
-  let localVersion = "2.1.0";
+  let localVersion = "2.1.2";
   if (fs.existsSync(VERSION_FILE)) {
     localVersion = fs.readFileSync(VERSION_FILE, "utf-8").trim();
   }
@@ -266,6 +266,15 @@ async function startUpdate() {
 
     copyRecursive(sourceDir, process.cwd());
     console.log("[OK] Remplacement des fichiers systèmes achevé.");
+
+    // Update VERSION file explicitly with the exact release tag
+    try {
+      const cleanVersion = latestVersion.replace(/^v/i, "").trim();
+      fs.writeFileSync(VERSION_FILE, cleanVersion, "utf-8");
+      console.log(`[OK] Fichier VERSION mis à jour avec le tag de version : ${cleanVersion}`);
+    } catch (vErr) {
+      console.warn("⚠️ Ne peut pas mettre à jour le fichier VERSION :", vErr.message);
+    }
   } catch (err) {
     console.error("⚠️ Échec lors du remplacement sélectif des fichiers.");
     console.error(err.message);

@@ -22,6 +22,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Core App State
+  const [appVersion, setAppVersion] = useState("2.1.2");
   const [reports, setReports] = useState<Report[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [categories, setCategories] = useState<BreakdownCategory[]>([]);
@@ -45,17 +46,22 @@ export default function App() {
 
   const fetchData = async () => {
     try {
-      const [reportsRes, unitsRes, categoriesRes, settingsRes] = await Promise.all([
+      const [reportsRes, unitsRes, categoriesRes, settingsRes, versionRes] = await Promise.all([
         fetch("/api/reports"),
         fetch("/api/config/unites"),
         fetch("/api/config/categories"),
-        fetch("/api/settings")
+        fetch("/api/settings"),
+        fetch("/api/version")
       ]);
 
       if (reportsRes.ok) setReports(await reportsRes.json());
       if (unitsRes.ok) setUnits(await unitsRes.json());
       if (categoriesRes.ok) setCategories(await categoriesRes.json());
       if (settingsRes.ok) setSettings(await settingsRes.json());
+      if (versionRes && versionRes.ok) {
+        const vData = await versionRes.json();
+        if (vData.version) setAppVersion(vData.version);
+      }
     } catch (err) {
       console.error("Error fetching application data:", err);
       triggerAlert("error", "Impossible de contacter le serveur local de maintenance.");
@@ -276,7 +282,7 @@ export default function App() {
         </nav>
 
         <div className="p-4 border-t border-slate-800 text-center text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-          EGCSO RAPPORT &bull; v2.1.2
+          EGCSO RAPPORT &bull; v{appVersion}
         </div>
       </aside>
 
@@ -439,7 +445,7 @@ export default function App() {
             </nav>
 
             <div className="p-4 border-t border-slate-800 text-center text-[9px] text-slate-500 font-bold uppercase">
-              EGCSO RAPPORT &bull; v2.1.2
+              EGCSO RAPPORT &bull; v{appVersion}
             </div>
           </div>
           <div className="flex-1" onClick={() => setMobileMenuOpen(false)}></div>

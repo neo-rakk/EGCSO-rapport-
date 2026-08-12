@@ -240,13 +240,29 @@ app.post("/api/settings", (req, res) => {
   }
 });
 
-// Update checking endpoints (CDC / Audit Point 3.3)
-app.get("/api/update/check", async (req, res) => {
-  let localVersion = "2.1.0";
+// App Version Endpoint
+app.get("/api/version", (req, res) => {
+  let version = "2.1.2";
   try {
     const vPath = path.resolve(process.cwd(), "VERSION");
     if (fs.existsSync(vPath)) {
-      localVersion = fs.readFileSync(vPath, "utf-8").trim();
+      const content = fs.readFileSync(vPath, "utf-8").trim();
+      if (content) version = content;
+    }
+  } catch (err) {
+    console.error("Error reading VERSION file:", err);
+  }
+  res.json({ version });
+});
+
+// Update checking endpoints (CDC / Audit Point 3.3)
+app.get("/api/update/check", async (req, res) => {
+  let localVersion = "2.1.2";
+  try {
+    const vPath = path.resolve(process.cwd(), "VERSION");
+    if (fs.existsSync(vPath)) {
+      const content = fs.readFileSync(vPath, "utf-8").trim();
+      if (content) localVersion = content;
     }
   } catch (err) {
     console.error("Error reading VERSION file:", err);
