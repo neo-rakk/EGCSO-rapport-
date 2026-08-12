@@ -601,7 +601,12 @@ export default function Settings({
     ];
 
     blocs.forEach(bloc => {
-      zones.push({ name: bloc, subzones: [...subzonesList] });
+      zones.push({ 
+        name: bloc, 
+        subzones: [...subzonesList],
+        floors: ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5"],
+        roomsPerFloor: 13
+      });
     });
 
     const updatedUnits = localUnits.map(u => u.id === selectedUnitId ? { ...u, zones } : u);

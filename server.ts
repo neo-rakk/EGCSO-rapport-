@@ -48,6 +48,37 @@ const PORT = 3000;
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+// Lightweight HTTP Basic Auth Middleware for security on the local network (CDC v1.0 / Audit Point 2.2)
+app.use((req, res, next) => {
+  if (req.path === "/api/health") {
+    return next();
+  }
+
+  const authHeader = req.headers.authorization;
+  const expectedPassword = process.env.APP_PASSWORD || "egcso2026";
+
+  if (!authHeader) {
+    res.setHeader("WWW-Authenticate", 'Basic realm="EGCSO Maintenance Security"');
+    return res.status(401).send("Authentification requise pour l'application de maintenance EGCSO.");
+  }
+
+  try {
+    const token = authHeader.split(" ")[1];
+    const decoded = Buffer.from(token, "base64").toString("utf8");
+    const parts = decoded.split(":");
+    const pass = parts.slice(1).join(":"); // handles passwords containing colons
+
+    if (pass === expectedPassword) {
+      return next();
+    }
+  } catch (err) {
+    // Parsing error
+  }
+
+  res.setHeader("WWW-Authenticate", 'Basic realm="EGCSO Maintenance Security"');
+  return res.status(401).send("Identifiants de sécurité incorrects.");
+});
+
 // Dynamic helper to get current storage paths
 function getSettings() {
   const settingsPath = path.resolve(process.cwd(), "config/settings.json");

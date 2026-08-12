@@ -49,6 +49,8 @@ export interface Report {
 export interface UnitZone {
   name: string;
   subzones: string[];
+  floors?: string[];
+  roomsPerFloor?: number;
 }
 
 export interface Unit {

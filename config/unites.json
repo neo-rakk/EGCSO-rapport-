@@ -5,31 +5,45 @@
     "zones": [
       {
         "name": "Bloc A",
-        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"]
+        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"],
+        "floors": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5"],
+        "roomsPerFloor": 13
       },
       {
         "name": "Bloc B",
-        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"]
+        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"],
+        "floors": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5"],
+        "roomsPerFloor": 13
       },
       {
         "name": "Bloc C",
-        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"]
+        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"],
+        "floors": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5"],
+        "roomsPerFloor": 13
       },
       {
         "name": "Bloc D",
-        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"]
+        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"],
+        "floors": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5"],
+        "roomsPerFloor": 13
       },
       {
         "name": "Bloc E",
-        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"]
+        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"],
+        "floors": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5"],
+        "roomsPerFloor": 13
       },
       {
         "name": "Bloc F",
-        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"]
+        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"],
+        "floors": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5"],
+        "roomsPerFloor": 13
       },
       {
         "name": "Bloc G",
-        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"]
+        "subzones": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5", "Local technique/Chaufferie", "Local électrique", "Gaine technique", "Local poubelles", "Buanderie/Lingerie", "Ascenseur", "Escaliers", "Couloirs communs", "Terrasse/Toiture"],
+        "floors": ["Étage 0", "Étage 1", "Étage 2", "Étage 3", "Étage 4", "Étage 5"],
+        "roomsPerFloor": 13
       },
       {
         "name": "Restaurant",

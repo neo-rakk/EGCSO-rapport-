@@ -117,11 +117,12 @@ export default function ReportForm({
     }
   }, [initialData]);
 
-  // Handle Napoli-specific cascades
+  // Handle accommodation/multi-step cascades
   useEffect(() => {
-    if (unitId === "VIL" && napoliBlock) {
-      const activeUnitObj = units.find(u => u.id === "VIL");
-      const isAccom = !!activeUnitObj?.zones.find(z => z.name === napoliBlock)?.subzones.some(sz => sz.startsWith("Étage"));
+    if (unitId && napoliBlock) {
+      const activeUnitObj = units.find(u => u.id === unitId);
+      const selectedBlockObj = activeUnitObj?.zones.find(z => z.name === napoliBlock);
+      const isAccom = !!(selectedBlockObj?.floors && selectedBlockObj.floors.length > 0);
       
       if (!isAccom) {
         setSelectedZone(napoliBlock);
@@ -146,23 +147,58 @@ export default function ReportForm({
     }
   }, [unitId, napoliBlock, napoliZoneType, napoliFloor, napoliRoom, units]);
 
-  // File Upload base64 helper
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const fileList = Array.from(e.target.files) as File[];
-      fileList.forEach(file => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => {
-          if (typeof reader.result === "string") {
+  // Helper to compress images on the client side using HTML5 Canvas (Audit Point 3.1)
+  const compressAndAddPhoto = (file: File) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      if (typeof event.target?.result === "string") {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 1200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            // Compress with JPEG at 80% quality
+            const compressedBase64 = canvas.toDataURL("image/jpeg", 0.8);
             const newPhoto: Photo = {
-              name: file.name,
-              phase: "before", // default to before
-              data: reader.result
+              name: file.name.replace(/\.[^/.]+$/, "") + ".jpg",
+              phase: "before",
+              data: compressedBase64
             };
             setPhotos(prev => [...prev, newPhoto]);
           }
         };
+      }
+    };
+  };
+
+  // File Upload base64 helper with canvas compression
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const fileList = Array.from(e.target.files) as File[];
+      fileList.forEach(file => {
+        compressAndAddPhoto(file);
       });
     }
   };
@@ -177,18 +213,7 @@ export default function ReportForm({
       const fileList = Array.from(e.dataTransfer.files) as File[];
       fileList.forEach(file => {
         if (file.type.startsWith("image/")) {
-          const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = () => {
-            if (typeof reader.result === "string") {
-              const newPhoto: Photo = {
-                name: file.name,
-                phase: "before",
-                data: reader.result
-              };
-              setPhotos(prev => [...prev, newPhoto]);
-            }
-          };
+          compressAndAddPhoto(file);
         }
       });
     }
@@ -409,7 +434,9 @@ export default function ReportForm({
   // Find active zone for subzones cascade (for standard units)
   const activeZoneObj = activeUnit?.zones.find(z => z.name === selectedZone);
 
-  const isAccommodationBlock = !!(unitId === "VIL" && napoliBlock && activeUnit?.zones.find(z => z.name === napoliBlock)?.subzones.some(sz => sz.startsWith("Étage")));
+  const selectedBlockObj = activeUnit?.zones.find(z => z.name === napoliBlock);
+  const isAccommodationBlock = !!(selectedBlockObj?.floors && selectedBlockObj.floors.length > 0);
+  const hasAccommodationZones = !!activeUnit?.zones.some(z => z.floors && z.floors.length > 0);
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" id="report-form">
@@ -535,8 +562,8 @@ export default function ReportForm({
               </select>
             </div>
 
-            {/* If Village Napoli (VIL) is chosen, we trigger custom Napoli blocks cascade */}
-            {unitId === "VIL" ? (
+            {/* If the unit has accommodation zones, we trigger the custom block/floor/room cascade */}
+            {hasAccommodationZones ? (
               <>
                 {/* Napoli Bloc Selection */}
                 <div>
@@ -640,7 +667,7 @@ export default function ReportForm({
           </div>
 
           {/* Napoli block floor / rooms cascade row */}
-          {unitId === "VIL" && napoliZoneType === "etage" && (
+          {hasAccommodationZones && napoliZoneType === "etage" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-4 rounded-lg border border-dashed border-slate-200">
               {/* Floor selection */}
               <div>
@@ -654,16 +681,13 @@ export default function ReportForm({
                   className="w-full bg-white border border-slate-200 rounded-lg py-2 px-3 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-800"
                 >
                   <option value="">-- Choisir l'étage --</option>
-                  <option value="Étage 0">RDC (Étage 0)</option>
-                  <option value="Étage 1">1er Étage (Étage 1)</option>
-                  <option value="Étage 2">2ème Étage (Étage 2)</option>
-                  <option value="Étage 3">3ème Étage (Étage 3)</option>
-                  <option value="Étage 4">4ème Étage (Étage 4)</option>
-                  <option value="Étage 5">5ème Étage (Étage 5)</option>
+                  {selectedBlockObj?.floors?.map(f => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
                 </select>
               </div>
 
-              {/* Room selection (13 rooms per floor) */}
+              {/* Room selection (rooms generated dynamically based on config) */}
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">Numéro de Chambre *</label>
                 <select
@@ -673,8 +697,8 @@ export default function ReportForm({
                   className="w-full bg-white border border-slate-200 rounded-lg py-2 px-3 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-800 disabled:opacity-50"
                 >
                   <option value="">-- Choisir la chambre --</option>
-                  {Array.from({ length: 13 }, (_, i) => {
-                    const floorNum = napoliFloor.split(" ")[1] || "0";
+                  {Array.from({ length: selectedBlockObj?.roomsPerFloor || 13 }, (_, i) => {
+                    const floorNum = napoliFloor.replace(/\D/g, "") || "0";
                     const blockParts = napoliBlock.split(" ");
                     const blockChar = blockParts[blockParts.length - 1] || "A";
                     const roomNum = `${floorNum}${String(i + 1).padStart(2, "0")}`;
@@ -688,7 +712,7 @@ export default function ReportForm({
           )}
 
           {/* Napoli block technical zones selection */}
-          {unitId === "VIL" && napoliZoneType === "technique" && (
+          {hasAccommodationZones && napoliZoneType === "technique" && (
             <div className="bg-slate-50 p-4 rounded-lg border border-dashed border-slate-200">
               <label className="block text-xs font-bold text-slate-600 mb-1.5">Zone Technique Commune *</label>
               <select
@@ -697,8 +721,8 @@ export default function ReportForm({
                 className="w-full md:w-1/2 bg-white border border-slate-200 rounded-lg py-2 px-3 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-800"
               >
                 <option value="">-- Choisir le local technique --</option>
-                {activeUnit?.zones.find(z => z.name === napoliBlock)?.subzones
-                  .filter(sz => !sz.startsWith("Étage"))
+                {selectedBlockObj?.subzones
+                  .filter(sz => !selectedBlockObj?.floors?.includes(sz))
                   .map(sz => (
                     <option key={sz} value={sz}>{sz}</option>
                   ))}
