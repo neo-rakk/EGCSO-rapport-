@@ -19,11 +19,10 @@ jobs:
       - name: 🟢 Configuration de Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
-          cache: 'npm'
+          node-version: 20
 
       - name: 📦 Installation des dépendances
-        run: npm ci
+        run: npm install
 
       - name: 🔍 Vérification du code (Linter & Types)
         run: npm run lint
@@ -47,7 +46,7 @@ jobs:
           cp VERSION release_package/
           cp README.md release_package/
           cp package.json release_package/
-          cp package-lock.json release_package/
+          [ -f package-lock.json ] && cp package-lock.json release_package/ || true
           cp server.ts release_package/
           cp -r assets/* release_package/assets/
 
