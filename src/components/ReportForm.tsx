@@ -120,21 +120,31 @@ export default function ReportForm({
   // Handle Napoli-specific cascades
   useEffect(() => {
     if (unitId === "VIL" && napoliBlock) {
-      if (napoliZoneType === "technique") {
+      const activeUnitObj = units.find(u => u.id === "VIL");
+      const isAccom = !!activeUnitObj?.zones.find(z => z.name === napoliBlock)?.subzones.some(sz => sz.startsWith("Étage"));
+      
+      if (!isAccom) {
         setSelectedZone(napoliBlock);
-        // Reset floor / rooms
-        setNapoliFloor("");
-        setNapoliRoom("");
-      } else if (napoliZoneType === "etage" && napoliFloor) {
-        setSelectedZone(`${napoliBlock}`);
-        if (napoliRoom) {
-          setSelectedSubzone(`${napoliFloor} / ${napoliRoom}`);
+      } else {
+        if (napoliZoneType === "technique") {
+          setSelectedZone(napoliBlock);
+          // Reset floor / rooms
+          setNapoliFloor("");
+          setNapoliRoom("");
+        } else if (napoliZoneType === "etage" && napoliFloor) {
+          setSelectedZone(napoliBlock);
+          if (napoliRoom) {
+            setSelectedSubzone(`${napoliFloor} / ${napoliRoom}`);
+          } else {
+            setSelectedSubzone(napoliFloor);
+          }
         } else {
-          setSelectedSubzone(napoliFloor);
+          setSelectedZone("");
+          setSelectedSubzone("");
         }
       }
     }
-  }, [unitId, napoliBlock, napoliZoneType, napoliFloor, napoliRoom]);
+  }, [unitId, napoliBlock, napoliZoneType, napoliFloor, napoliRoom, units]);
 
   // File Upload base64 helper
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -399,6 +409,8 @@ export default function ReportForm({
   // Find active zone for subzones cascade (for standard units)
   const activeZoneObj = activeUnit?.zones.find(z => z.name === selectedZone);
 
+  const isAccommodationBlock = !!(unitId === "VIL" && napoliBlock && activeUnit?.zones.find(z => z.name === napoliBlock)?.subzones.some(sz => sz.startsWith("Étage")));
+
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" id="report-form">
       {/* Form Header */}
@@ -541,20 +553,14 @@ export default function ReportForm({
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-800 focus:bg-white"
                   >
                     <option value="">-- Choisir un bloc --</option>
-                    <option value="Bloc A">Bloc A</option>
-                    <option value="Bloc B">Bloc B</option>
-                    <option value="Bloc C">Bloc C</option>
-                    <option value="Bloc D">Bloc D</option>
-                    <option value="Bloc E">Bloc E</option>
-                    <option value="Bloc F">Bloc F</option>
-                    <option value="Bloc G">Bloc G</option>
-                    <option value="Restaurant">Restaurant du Village</option>
-                    <option value="Administration">Bâtiment Administratif</option>
+                    {activeUnit?.zones.map(z => (
+                      <option key={z.name} value={z.name}>{z.name}</option>
+                    ))}
                   </select>
                 </div>
 
                 {/* Napoli zone type selection (Chambres/Etages vs local technique) */}
-                {napoliBlock && napoliBlock !== "Restaurant" && napoliBlock !== "Administration" ? (
+                {napoliBlock && isAccommodationBlock ? (
                   <div>
                     <label className="block text-xs font-bold text-slate-600 mb-1.5">Type de Zone *</label>
                     <select
@@ -572,7 +578,7 @@ export default function ReportForm({
                       <option value="technique">Zones Techniques Communes</option>
                     </select>
                   </div>
-                ) : (
+                ) : napoliBlock ? (
                   /* If Restaurant or Administration is selected, let them choose subzones directly */
                   <div>
                     <label className="block text-xs font-bold text-slate-600 mb-1.5">Sous-zone d'intervention</label>
@@ -590,7 +596,7 @@ export default function ReportForm({
                       ))}
                     </select>
                   </div>
-                )}
+                ) : null}
               </>
             ) : (
               /* STANDARD UNIT CASCADE */
@@ -669,7 +675,8 @@ export default function ReportForm({
                   <option value="">-- Choisir la chambre --</option>
                   {Array.from({ length: 13 }, (_, i) => {
                     const floorNum = napoliFloor.split(" ")[1] || "0";
-                    const blockChar = napoliBlock.split(" ")[1] || "A";
+                    const blockParts = napoliBlock.split(" ");
+                    const blockChar = blockParts[blockParts.length - 1] || "A";
                     const roomNum = `${floorNum}${String(i + 1).padStart(2, "0")}`;
                     return `${blockChar}-${roomNum}`;
                   }).map(roomCode => (
@@ -690,7 +697,7 @@ export default function ReportForm({
                 className="w-full md:w-1/2 bg-white border border-slate-200 rounded-lg py-2 px-3 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-800"
               >
                 <option value="">-- Choisir le local technique --</option>
-                {activeUnit?.zones.find(z => z.name === "Bloc A")?.subzones
+                {activeUnit?.zones.find(z => z.name === napoliBlock)?.subzones
                   .filter(sz => !sz.startsWith("Étage"))
                   .map(sz => (
                     <option key={sz} value={sz}>{sz}</option>
