@@ -17,7 +17,10 @@ import {
   Layers,
   Layout,
   Wrench,
-  Wand2
+  Wand2,
+  Download,
+  Upload,
+  RefreshCw
 } from "lucide-react";
 
 interface SettingsProps {
@@ -87,6 +90,10 @@ export default function Settings({
   const [categoriesSaved, setCategoriesSaved] = useState(false);
   const [reconstructResult, setReconstructResult] = useState<{ success: boolean; count: number; message: string } | null>(null);
   const [reconstructing, setReconstructing] = useState(false);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [restoreSuccess, setRestoreSuccess] = useState("");
+  const [showNapoliConfirm, setShowNapoliConfirm] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -206,6 +213,76 @@ export default function Settings({
       setReconstructResult({ success: false, count: 0, message: err.message });
     } finally {
       setReconstructing(false);
+    }
+  };
+
+  const handleDownloadBackup = async () => {
+    setBackupLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/backup");
+      if (!response.ok) {
+        throw new Error("Impossible de générer le fichier de sauvegarde.");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `egcso_sauvegarde_${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError("Erreur lors du téléchargement de la sauvegarde : " + err.message);
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleRestoreBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setRestoreLoading(true);
+    setError("");
+    setRestoreSuccess("");
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        try {
+          const base64String = (evt.target?.result as string).split(",")[1];
+          const response = await fetch("/api/restore", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ zipData: base64String }),
+          });
+
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(result.error || "Restauration invalide.");
+          }
+
+          setRestoreSuccess(result.message || "Configurations et base de données restaurées avec succès ! Rechargement...");
+          setTimeout(() => {
+            window.location.reload();
+          }, 1800);
+        } catch (err: any) {
+          setError("Échec de la restauration : " + err.message);
+          setRestoreLoading(false);
+        }
+      };
+      reader.onerror = () => {
+        setError("Impossible de lire le fichier de sauvegarde.");
+        setRestoreLoading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      setError("Erreur de fichier : " + err.message);
+      setRestoreLoading(false);
     }
   };
 
@@ -492,28 +569,39 @@ export default function Settings({
   }, [selectedZoneName, selectedUnitId, localUnits]);
 
   // Napoli rapid generation trigger
-  const handleQuickGenerateNapoli = async () => {
+  const handleQuickGenerateNapoli = () => {
     if (!activeUnit) return;
-    const confirmGen = window.confirm(
-      `Générer automatiquement une hiérarchie complète type "Napoli" dans l'unité "${activeUnit.name}" ?\n\nCela va créer 7 Blocs (Bloc A à Bloc G) avec 6 étages par bloc (étage 0 à étage 5) et 13 chambres par étage (soit 546 chambres/sous-zones au total).\nLes zones existantes dans cette unité seront écrasées.`
-    );
-    if (!confirmGen) return;
+    setShowNapoliConfirm(true);
+  };
 
+  const handleConfirmQuickGenerateNapoli = async () => {
+    if (!activeUnit) return;
     setError("");
     setUnitsSaved(false);
+    setShowNapoliConfirm(false);
 
     const zones: UnitZone[] = [];
     const blocs = ["Bloc A", "Bloc B", "Bloc C", "Bloc D", "Bloc E", "Bloc F", "Bloc G"];
-    
+    const subzonesList = [
+      "Étage 0",
+      "Étage 1",
+      "Étage 2",
+      "Étage 3",
+      "Étage 4",
+      "Étage 5",
+      "Local technique/Chaufferie",
+      "Local électrique",
+      "Gaine technique",
+      "Local poubelles",
+      "Buanderie/Lingerie",
+      "Ascenseur",
+      "Escaliers",
+      "Couloirs communs",
+      "Terrasse/Toiture"
+    ];
+
     blocs.forEach(bloc => {
-      const subzones: string[] = [];
-      for (let floor = 0; floor <= 5; floor++) {
-        for (let room = 1; room <= 13; room++) {
-          const roomNum = floor * 100 + room;
-          subzones.push(`Chambre ${roomNum}`);
-        }
-      }
-      zones.push({ name: bloc, subzones });
+      zones.push({ name: bloc, subzones: [...subzonesList] });
     });
 
     const updatedUnits = localUnits.map(u => u.id === selectedUnitId ? { ...u, zones } : u);
@@ -525,7 +613,7 @@ export default function Settings({
       setSelectedZoneName("Bloc A");
       setTimeout(() => setUnitsSaved(false), 3000);
     } else {
-      setError("Erreur lors de la génération automatique.");
+      setError("Erreur lors de la génération automatique de la structure Napoli.");
     }
   };
 
@@ -923,6 +1011,36 @@ export default function Settings({
                         <Wand2 className="w-3.5 h-3.5" /> Napoli
                       </button>
                     </div>
+
+                    {showNapoliConfirm && (
+                      <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2.5">
+                        <div className="flex gap-2">
+                          <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-extrabold text-amber-800 uppercase tracking-wide">
+                              Confirmer la génération rapide ?
+                            </p>
+                            <p className="text-[10px] text-amber-700 font-semibold leading-relaxed">
+                              Cela va écraser les zones actuelles de <strong>{activeUnit?.name}</strong> pour générer automatiquement 7 blocs (A à G) avec étages et locaux techniques types Napoli.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5 justify-end">
+                          <button
+                            onClick={() => setShowNapoliConfirm(false)}
+                            className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-[10px] px-2.5 py-1 rounded transition-colors cursor-pointer"
+                          >
+                            Annuler
+                          </button>
+                          <button
+                            onClick={handleConfirmQuickGenerateNapoli}
+                            className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] px-2.5 py-1 rounded transition-colors cursor-pointer"
+                          >
+                            Générer
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               ) : (
@@ -1141,6 +1259,92 @@ export default function Settings({
 
             </div>
 
+          </div>
+        )}
+      </div>
+
+      {/* Backup & Restore Section */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-5">
+        <div className="pb-3 border-b border-slate-100">
+          <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center gap-2">
+            <Database className="w-5 h-5 text-emerald-850" />
+            Sauvegarde & Restauration de la Base de Données
+          </h3>
+          <p className="text-[11px] text-slate-500 font-semibold mt-1">
+            Gérez la sécurité de vos données en téléchargeant une sauvegarde complète (fichiers JSON, configurations, photos et enregistrements audio) ou en restaurant une sauvegarde précédente.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left Column: Backup */}
+          <div className="border border-slate-100 rounded-lg p-4 bg-slate-50/40 flex flex-col justify-between space-y-4">
+            <div className="space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <Download className="w-4 h-4 text-emerald-850" />
+                1. Télécharger une Sauvegarde
+              </span>
+              <p className="text-[11px] text-slate-500 font-semibold leading-relaxed">
+                Génère un fichier archive ZIP contenant l'intégralité de la base de données (rapports, fiches de pannes, photos avant/après, notes vocales et fichiers de configuration). Conservez précieusement ce fichier sur votre ordinateur.
+              </p>
+            </div>
+            
+            <button
+              onClick={handleDownloadBackup}
+              disabled={backupLoading}
+              className="w-full bg-emerald-800 hover:bg-emerald-950 disabled:bg-slate-350 text-white font-bold text-xs py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-colors"
+            >
+              <Download className={`w-4 h-4 ${backupLoading ? "animate-bounce" : ""}`} />
+              {backupLoading ? "Génération de l'archive..." : "Télécharger la Sauvegarde (.zip)"}
+            </button>
+          </div>
+
+          {/* Right Column: Restore */}
+          <div className="border border-slate-100 rounded-lg p-4 bg-slate-50/40 flex flex-col justify-between space-y-4">
+            <div className="space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <Upload className="w-4 h-4 text-amber-600" />
+                2. Restaurer une Sauvegarde
+              </span>
+              <p className="text-[11px] text-slate-500 font-semibold leading-relaxed">
+                Sélectionnez un fichier ZIP de sauvegarde précédemment téléchargé pour restaurer l'intégralité du système. <strong className="text-amber-850">Attention :</strong> Cette action écrasera toutes vos données et configurations actuelles.
+              </p>
+            </div>
+
+            <div className="relative">
+              <input
+                type="file"
+                accept=".zip"
+                onChange={handleRestoreBackup}
+                disabled={restoreLoading}
+                id="restore-file-input"
+                className="hidden"
+              />
+              <label
+                htmlFor="restore-file-input"
+                className={`w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-350 text-slate-950 font-bold text-xs py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-colors ${
+                  restoreLoading ? "opacity-50 pointer-events-none" : ""
+                }`}
+              >
+                {restoreLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Restauration en cours...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    Importer et Restaurer (.zip)
+                  </>
+                )}
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {restoreSuccess && (
+          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-800 flex-shrink-0" />
+            <p className="text-xs font-bold text-emerald-800">{restoreSuccess}</p>
           </div>
         )}
       </div>

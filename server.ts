@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import AdmZip from "adm-zip";
 import { createServer as createViteServer } from "vite";
 
 interface AudioNote {
@@ -205,6 +206,83 @@ app.post("/api/config/categories", (req, res) => {
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Database Backup endpoint
+app.get("/api/backup", (req, res) => {
+  try {
+    const zip = new AdmZip();
+    
+    // 1. Add the config folder
+    const configPath = path.resolve(process.cwd(), "config");
+    if (fs.existsSync(configPath)) {
+      zip.addLocalFolder(configPath, "config");
+    }
+    
+    // 2. Add the dynamic reports and database storage
+    const storageRoot = getResolvedStorageRoot();
+    if (fs.existsSync(storageRoot)) {
+      zip.addLocalFolder(storageRoot, "storage");
+    }
+    
+    const buffer = zip.toBuffer();
+    const dateStr = new Date().toISOString().slice(0, 10);
+    res.setHeader("Content-Disposition", `attachment; filename=egcso_sauvegarde_${dateStr}.zip`);
+    res.setHeader("Content-Type", "application/zip");
+    res.send(buffer);
+  } catch (err: any) {
+    console.error("Backup creation failed:", err);
+    res.status(500).json({ error: "Impossible de créer la sauvegarde : " + err.message });
+  }
+});
+
+// Database Restore endpoint
+app.post("/api/restore", (req, res) => {
+  try {
+    const { zipData } = req.body;
+    if (!zipData) {
+      return res.status(400).json({ error: "Données de fichier ZIP manquantes." });
+    }
+    
+    const buffer = Buffer.from(zipData, "base64");
+    const zip = new AdmZip(buffer);
+    const entries = zip.getEntries();
+    
+    const hasConfig = entries.some(e => e.entryName.startsWith("config/"));
+    const hasStorage = entries.some(e => e.entryName.startsWith("storage/"));
+    
+    if (!hasConfig && !hasStorage) {
+      return res.status(400).json({ error: "L'archive fournie n'est pas une sauvegarde valide de l'application EGCSO." });
+    }
+    
+    const targetConfigDir = path.resolve(process.cwd(), "config");
+    const targetStorageDir = getResolvedStorageRoot();
+    
+    // Overwrite the files with contents of the zip
+    for (const entry of entries) {
+      if (entry.isDirectory) continue;
+      
+      if (entry.entryName.startsWith("config/")) {
+        const relativePath = entry.entryName.replace(/^config\//, "");
+        const destPath = path.join(targetConfigDir, relativePath);
+        fs.mkdirSync(path.dirname(destPath), { recursive: true });
+        fs.writeFileSync(destPath, entry.getData());
+      } else if (entry.entryName.startsWith("storage/")) {
+        const relativePath = entry.entryName.replace(/^storage\//, "");
+        const destPath = path.join(targetStorageDir, relativePath);
+        fs.mkdirSync(path.dirname(destPath), { recursive: true });
+        fs.writeFileSync(destPath, entry.getData());
+      }
+    }
+    
+    // Ensure standard files exist
+    ensureStorageStructure();
+    
+    res.json({ success: true, message: "Base de données et configurations restaurées avec succès !" });
+  } catch (err: any) {
+    console.error("Restore failed:", err);
+    res.status(500).json({ error: "Impossible de restaurer la sauvegarde : " + err.message });
   }
 });
 
