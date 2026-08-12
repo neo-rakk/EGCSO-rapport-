@@ -10,6 +10,12 @@ export interface Photo {
   data?: string; // base64 string for new uploads
 }
 
+export interface AudioNote {
+  name: string;
+  url?: string;
+  data?: string; // base64 string for new uploads
+}
+
 export interface Report {
   id: string;
   reference: string;
@@ -31,6 +37,7 @@ export interface Report {
   duration: number; // in minutes
   cost: number; // in DZD
   photos: Photo[];
+  audioNotes?: AudioNote[];
   linkedReportId?: string;
   nextVisitDate?: string;
   additionalObservations?: string;

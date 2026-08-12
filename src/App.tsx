@@ -344,6 +344,7 @@ export default function App() {
           {currentView === "dashboard" && (
             <Dashboard
               reports={reports}
+              units={units}
               onCreateReport={() => {
                 setFormInitialData(null);
                 setCurrentView("form");

@@ -1,4 +1,5 @@
-import { Report } from "../types";
+import { useState } from "react";
+import { Report, Unit } from "../types";
 import { 
   Wrench, 
   AlertTriangle, 
@@ -9,11 +10,17 @@ import {
   FolderHeart,
   Calendar,
   Layers,
-  ArrowRight
+  ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  MapPin,
+  Grid3X3,
+  Network
 } from "lucide-react";
 
 interface DashboardProps {
   reports: Report[];
+  units: Unit[];
   onCreateReport: () => void;
   onSelectReport: (report: Report) => void;
   onNavigateToSearch: () => void;
@@ -22,12 +29,27 @@ interface DashboardProps {
 
 export default function Dashboard({ 
   reports, 
+  units = [],
   onCreateReport, 
   onSelectReport, 
   onNavigateToSearch,
   storageRoot 
 }: DashboardProps) {
   
+  // Expanded units & zones state for the arborescence tree widget
+  const [expandedUnits, setExpandedUnits] = useState<{ [key: string]: boolean }>({
+    VIL: true // default to expanding Village Napoli
+  });
+  const [expandedZones, setExpandedZones] = useState<{ [key: string]: boolean }>({});
+
+  const toggleUnit = (unitId: string) => {
+    setExpandedUnits(prev => ({ ...prev, [unitId]: !prev[unitId] }));
+  };
+
+  const toggleZone = (zoneKey: string) => {
+    setExpandedZones(prev => ({ ...prev, [zoneKey]: !prev[zoneKey] }));
+  };
+
   // Calculations
   const total = reports.length;
   const openReports = reports.filter(r => r.status === "Ouvert").length;
@@ -324,6 +346,126 @@ export default function Dashboard({
                     </div>
                     <ArrowRight className="w-5 h-5 text-slate-300" />
                   </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Structural Arborescence & Nomenclature Widget */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <Network className="w-5 h-5 text-emerald-800" />
+            <div>
+              <h3 className="font-extrabold text-slate-800 text-base">Arborescence & Nomenclature du Complexe</h3>
+              <p className="text-xs text-slate-400 font-medium font-semibold">
+                Consultez la structure hiérarchique officielle de toutes les infrastructures sportives et d'hébergement d'Oran.
+              </p>
+            </div>
+          </div>
+          <div className="text-[10px] bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
+            {units.length} Unités enregistrées
+          </div>
+        </div>
+
+        {units.length === 0 ? (
+          <div className="py-10 text-center text-slate-400 text-xs italic bg-slate-50 rounded-xl border border-dashed border-slate-200">
+            Aucune unité configurée pour le moment. Vous pouvez configurer la nomenclature dans l'onglet Configuration.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {units.map(unit => {
+              const isUnitExpanded = !!expandedUnits[unit.id];
+              return (
+                <div key={unit.id} className="border border-slate-200/80 rounded-xl overflow-hidden transition-all shadow-sm">
+                  {/* Unit Title Header */}
+                  <div 
+                    onClick={() => toggleUnit(unit.id)}
+                    className="bg-slate-50/70 hover:bg-slate-50 px-4 py-3.5 flex items-center justify-between cursor-pointer select-none transition-colors border-b border-slate-100"
+                  >
+                    <div className="flex items-center gap-3">
+                      {isUnitExpanded ? (
+                        <ChevronDown className="w-4 h-4 text-slate-500" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-slate-500" />
+                      )}
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-6.5 h-6.5 rounded-lg bg-emerald-800 text-amber-400 flex items-center justify-center text-xs font-black">
+                          {unit.id}
+                        </span>
+                        <div>
+                          <span className="font-extrabold text-slate-800 text-sm tracking-wide">{unit.name}</span>
+                          <span className="text-[10px] text-slate-400 font-bold ml-2">({unit.id})</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-bold">
+                      {unit.zones?.length || 0} zones / blocs
+                    </span>
+                  </div>
+
+                  {/* Zones list (children of Unit) */}
+                  {isUnitExpanded && (
+                    <div className="p-3 bg-white divide-y divide-slate-100 space-y-2">
+                      {(!unit.zones || unit.zones.length === 0) ? (
+                        <div className="text-center py-4 text-xs text-slate-400 italic">
+                          Aucun bloc ou zone n'a été rattaché à cette unité.
+                        </div>
+                      ) : (
+                        unit.zones.map(zone => {
+                          const zoneKey = `${unit.id}-${zone.name}`;
+                          const isZoneExpanded = !!expandedZones[zoneKey];
+                          return (
+                            <div key={zone.name} className="pt-2 pb-1 space-y-1.5 pl-2 md:pl-4">
+                              {/* Zone Row */}
+                              <div 
+                                onClick={() => toggleZone(zoneKey)}
+                                className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 cursor-pointer select-none transition-all"
+                              >
+                                <div className="flex items-center gap-2 text-slate-700">
+                                  {isZoneExpanded ? (
+                                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                  ) : (
+                                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                                  )}
+                                  <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                                  <span className="text-xs font-extrabold text-slate-700">{zone.name}</span>
+                                </div>
+                                <span className="text-[9px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">
+                                  {zone.subzones?.length || 0} locaux / sous-zones
+                                </span>
+                              </div>
+
+                              {/* Subzones list (children of Zone) */}
+                              {isZoneExpanded && (
+                                <div className="pl-6 pr-2 py-1.5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                  {(!zone.subzones || zone.subzones.length === 0) ? (
+                                    <div className="text-[10px] text-slate-400 italic col-span-full">
+                                      Aucune sous-zone configurée pour ce bloc.
+                                    </div>
+                                  ) : (
+                                    zone.subzones.map(subzone => (
+                                      <div 
+                                        key={subzone} 
+                                        className="border border-slate-100 bg-slate-50/50 hover:bg-slate-50 rounded-lg p-2 flex items-center gap-1.5 transition-colors group"
+                                      >
+                                        <Grid3X3 className="w-3.5 h-3.5 text-slate-300 group-hover:text-emerald-800 transition-colors flex-shrink-0" />
+                                        <span className="text-[11px] font-semibold text-slate-600 truncate" title={subzone}>
+                                          {subzone}
+                                        </span>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

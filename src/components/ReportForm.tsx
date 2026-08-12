@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Report, Unit, BreakdownCategory, Part, Photo } from "../types";
+import { Report, Unit, BreakdownCategory, Part, Photo, AudioNote } from "../types";
 import { 
   X, 
   Plus, 
@@ -10,7 +10,11 @@ import {
   AlertCircle,
   FileText,
   Clock,
-  Coins
+  Coins,
+  Mic,
+  Square,
+  Volume2,
+  Music
 } from "lucide-react";
 
 interface ReportFormProps {
@@ -52,6 +56,14 @@ export default function ReportForm({
   const [isValidated, setIsValidated] = useState(false);
   const [error, setError] = useState("");
 
+  // Audio recording states
+  const [audioNotes, setAudioNotes] = useState<AudioNote[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  const [audioError, setAudioError] = useState("");
+
   // Village Napoli Custom Cascades
   const [napoliBlock, setNapoliBlock] = useState("");
   const [napoliZoneType, setNapoliZoneType] = useState(""); // "etage" or "technique"
@@ -75,6 +87,7 @@ export default function ReportForm({
       setDuration(initialData.duration || 0);
       setCost(initialData.cost || 0);
       setPhotos(initialData.photos || []);
+      setAudioNotes(initialData.audioNotes || []);
       setLinkedReportId(initialData.linkedReportId || "");
       setNextVisitDate(initialData.nextVisitDate ? initialData.nextVisitDate.split("T")[0] : "");
       setAdditionalObservations(initialData.additionalObservations || "");
@@ -187,6 +200,106 @@ export default function ReportForm({
     setPhotos(prev => prev.filter((_, idx) => idx !== index));
   };
 
+  // Audio recording helpers & timer
+  useEffect(() => {
+    let interval: any = null;
+    if (isRecording) {
+      interval = setInterval(() => {
+        setRecordingSeconds(s => s + 1);
+      }, 1000);
+    } else {
+      setRecordingSeconds(0);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isRecording]);
+
+  const startRecording = async () => {
+    try {
+      setError("");
+      setAudioError("");
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+      
+      recorder.ondataavailable = (e: any) => {
+        if (e.data && e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+      
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "audio/webm" });
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => {
+          if (typeof reader.result === "string") {
+            const newAudio: AudioNote = {
+              name: `dictee_vocale_${Date.now()}.webm`,
+              data: reader.result
+            };
+            setAudioNotes(prev => [...prev, newAudio]);
+          }
+        };
+        // stop all tracks to release microphone
+        stream.getTracks().forEach(t => t.stop());
+      };
+      
+      setMediaRecorder(recorder);
+      setAudioChunks(chunks);
+      recorder.start();
+      setIsRecording(true);
+    } catch (err: any) {
+      console.error("Audio recording permission or initialization failed:", err);
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError" || err.message?.includes("denied")) {
+        setAudioError(
+          "L'accès au microphone a été refusé par votre navigateur. Si l'application s'exécute dans l'aperçu AI Studio (iframe), veuillez l'ouvrir dans un nouvel onglet via le bouton en haut à droite pour autoriser l'accès au microphone."
+        );
+      } else {
+        setAudioError(
+          "Impossible d'accéder au microphone. Veuillez vérifier que votre appareil dispose d'un micro branché et que les permissions sont activées."
+        );
+      }
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const fileList = Array.from(e.target.files) as File[];
+      fileList.forEach(file => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onloadend = () => {
+          if (typeof reader.result === "string") {
+            const newAudio: AudioNote = {
+              name: file.name,
+              data: reader.result
+            };
+            setAudioNotes(prev => [...prev, newAudio]);
+          }
+        };
+      });
+    }
+  };
+
+  const handleRemoveAudio = (index: number) => {
+    setAudioNotes(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const formatTime = (totalSeconds: number) => {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
   // Parts list helper
   const handleAddPart = () => {
     setParts(prev => [...prev, { name: "", quantity: 1 }]);
@@ -269,6 +382,7 @@ export default function ReportForm({
       duration: reportType === "Constat" ? 0 : duration,
       cost: reportType === "Constat" ? 0 : cost,
       photos,
+      audioNotes,
       linkedReportId: reportType === "Suivi" ? linkedReportId : undefined,
       nextVisitDate: reportType === "Suivi" && nextVisitDate ? nextVisitDate : undefined,
       additionalObservations,
@@ -820,6 +934,155 @@ export default function ReportForm({
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* SECTION 6.5: NOTES VOCALES ET DICTÉE DE PANNE */}
+        <div className="space-y-4 pb-6 border-b border-slate-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center gap-2">
+                <Mic className="w-4 h-4 text-emerald-850" />
+                Notes Vocales et Dictées de Panne
+              </h3>
+              <p className="text-[11px] text-slate-400 font-medium">
+                Enregistrez une dictée vocale directement sur le terrain pour accompagner votre rapport écrit.
+              </p>
+            </div>
+            
+            {/* Audio note counter */}
+            {audioNotes.length > 0 && (
+              <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[10px] font-bold self-start sm:self-auto">
+                {audioNotes.length} note(s) vocale(s)
+              </span>
+            )}
+          </div>
+
+          {audioError && (
+            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+              <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-amber-800">Contrainte d'accès microphone</p>
+                <p className="text-[11px] text-amber-700 leading-relaxed font-medium">
+                  {audioError}
+                </p>
+                <div className="pt-1.5 flex items-center gap-3">
+                  <a 
+                    href={window.location.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[10px] font-extrabold text-amber-850 hover:text-amber-950 underline transition-all"
+                  >
+                    Ouvrir l'application dans un nouvel onglet ↗
+                  </a>
+                  <span className="text-slate-300 text-[10px]">•</span>
+                  <span className="text-[10px] font-medium text-amber-700">Ou importez un fichier audio existant ci-dessous</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Left box: Live microphone recorder */}
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col items-center justify-center min-h-[140px] space-y-3 relative overflow-hidden">
+              {isRecording ? (
+                <>
+                  <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping"></span>
+                    <span className="text-[10px] font-extrabold text-red-600 uppercase tracking-widest">Enregistrement...</span>
+                  </div>
+
+                  <div className="text-3xl font-mono font-black text-slate-800">
+                    {formatTime(recordingSeconds)}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={stopRecording}
+                    className="bg-red-600 hover:bg-red-700 text-white font-extrabold py-2.5 px-6 rounded-full text-xs flex items-center gap-2 shadow-lg transition-all transform active:scale-95 cursor-pointer"
+                  >
+                    <Square className="w-4 h-4" /> Arrêter la dictée
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="text-center space-y-1">
+                    <p className="text-xs font-bold text-slate-700">Dictaphone Numérique Intégré</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Idéal pour l'usage mobile dans le complexe d'Oran</p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={startRecording}
+                    className="bg-emerald-800 hover:bg-emerald-950 text-white font-bold py-2.5 px-6 rounded-full text-xs flex items-center gap-2 shadow-sm transition-all transform active:scale-95 cursor-pointer"
+                  >
+                    <Mic className="w-4 h-4 text-amber-500 animate-pulse" /> Commencer à enregistrer
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Right box: File import backup */}
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col items-center justify-center min-h-[140px] space-y-3">
+              <div className="text-center space-y-1">
+                <p className="text-xs font-bold text-slate-700">Ou importer des notes audio</p>
+                <p className="text-[10px] text-slate-400 font-medium font-semibold">Prend en charge les formats .webm, .mp3, .wav, .m4a</p>
+              </div>
+
+              <div className="relative">
+                <input
+                  type="file"
+                  accept="audio/*"
+                  onChange={handleAudioUpload}
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                  id="audio-file-uploader"
+                />
+                <label
+                  htmlFor="audio-file-uploader"
+                  className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold py-2 px-5 rounded-full text-xs flex items-center gap-2 shadow-sm cursor-pointer transition-colors"
+                >
+                  <Upload className="w-4 h-4 text-slate-400" /> Choisir un fichier audio
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* List of recorded audio notes */}
+          {audioNotes.length > 0 && (
+            <div className="space-y-2 pt-2">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">Notes Vocales Jointes au Dossier</span>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {audioNotes.map((audio, index) => (
+                  <div key={index} className="border border-slate-200 bg-white p-3 rounded-xl flex items-center justify-between gap-3 shadow-sm">
+                    <div className="flex items-center gap-2.5 truncate flex-1">
+                      <Music className="w-4 h-4 text-emerald-800 flex-shrink-0" />
+                      <div className="truncate text-left">
+                        <div className="text-xs font-bold text-slate-700 truncate" title={audio.name}>{audio.name}</div>
+                        <div className="text-[9px] text-slate-400 font-semibold uppercase">{audio.url ? "Fichier Enregistré" : "Nouveau Mémo Vocal"}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <audio 
+                        src={audio.data || audio.url} 
+                        controls 
+                        preload="metadata"
+                        className="w-40 h-8 text-slate-800 filter brightness-95" 
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAudio(index)}
+                        className="text-slate-400 hover:text-red-600 p-1.5 hover:bg-slate-50 rounded-lg transition-colors"
+                        title="Supprimer la note vocale"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

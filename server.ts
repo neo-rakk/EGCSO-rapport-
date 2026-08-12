@@ -3,6 +3,12 @@ import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 
+interface AudioNote {
+  name: string;
+  url?: string;
+  data?: string;
+}
+
 // Interfaces for structured reports
 interface Report {
   id: string; // unique reference ex: EGCSO-VIL-TEC-20260811-001
@@ -25,6 +31,7 @@ interface Report {
   duration: number; // in minutes
   cost: number; // in DZD
   photos: Array<{ name: string; phase: "before" | "after"; url: string }>;
+  audioNotes?: AudioNote[];
   linkedReportId?: string;
   nextVisitDate?: string;
   additionalObservations?: string;
@@ -85,6 +92,29 @@ function ensureStorageStructure() {
 
 // Ensure the storage structure is built on startup
 ensureStorageStructure();
+
+// Mutual exclusion lock for index database operations to avoid duplicate references
+let dbMutexPromise = Promise.resolve();
+function acquireDbMutex(): Promise<() => void> {
+  let release!: () => void;
+  const nextPromise = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const currentPromise = dbMutexPromise;
+  dbMutexPromise = dbMutexPromise.then(() => nextPromise);
+  return currentPromise.then(() => release);
+}
+
+// Security: Escape HTML characters to prevent layout breakage and XSS injections
+function escapeHtml(unsafe: string): string {
+  if (!unsafe) return "";
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 // Helper to read database
 function readDatabase(): { reports: Report[] } {
@@ -195,6 +225,26 @@ app.get("/api/reports/photo/:ref/:name", (req, res) => {
     res.sendFile(photoPath);
   } else {
     res.status(404).json({ error: "Photo introuvable" });
+  }
+});
+
+// Audio note retrieval endpoint
+app.get("/api/reports/audio/:ref/:name", (req, res) => {
+  const { ref, name } = req.params;
+  const db = readDatabase();
+  const report = db.reports.find((r) => r.reference === ref);
+  
+  if (!report || !report.folderPath) {
+    return res.status(404).json({ error: "Rapport introuvable" });
+  }
+  
+  const root = getResolvedStorageRoot();
+  const audioPath = path.join(root, report.folderPath, "audio", name);
+  
+  if (fs.existsSync(audioPath)) {
+    res.sendFile(audioPath);
+  } else {
+    res.status(404).json({ error: "Note vocale introuvable" });
   }
 });
 
@@ -313,7 +363,7 @@ function generateReportHTML(report: Report, settings: any): string {
   const partsRows = report.parts.length > 0 
     ? report.parts.map(p => `
         <tr>
-          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; color: #374151;">${p.name}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; color: #374151;">${escapeHtml(p.name)}</td>
           <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; color: #374151; text-align: center;">${p.quantity}</td>
         </tr>
       `).join("")
@@ -332,10 +382,34 @@ function generateReportHTML(report: Report, settings: any): string {
           ${photos.map(p => `
             <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px; background-color: #fafafa; text-align: center;">
               <img src="/api/reports/photo/${report.reference}/${p.name}" style="max-width: 100%; max-height: 200px; border-radius: 4px; object-fit: contain;" alt="${p.name}" />
-              <div style="font-size: 11px; color: #6b7280; margin-top: 5px; font-weight: 500;">${p.name}</div>
+              <div style="font-size: 11px; color: #6b7280; margin-top: 5px; font-weight: 500;">${escapeHtml(p.name)}</div>
             </div>
           `).join("")}
         </div>
+      </div>
+    `;
+  };
+
+  // Format audio notes
+  const renderAudioSection = () => {
+    if (!report.audioNotes || report.audioNotes.length === 0) return "";
+    return `
+      <div class="section-title">Notes Vocales / Enregistrements techniques</div>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+        ${report.audioNotes.map(audio => `
+          <div style="background-color: #fafafa; border: 1px solid #e5e7eb; padding: 12px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+            <div style="font-size: 13px; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 8px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #065f46; flex-shrink: 0;"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+              ${escapeHtml(audio.name)}
+            </div>
+            <div class="no-print" style="flex: 1; max-width: 300px;">
+              <audio controls src="/api/reports/audio/${report.reference}/${audio.name}" style="width: 100%; height: 32px;"></audio>
+            </div>
+            <div class="only-print" style="font-size: 11px; color: #6b7280; font-style: italic;">
+              Note vocale enregistrée (non lisible à l'impression papier)
+            </div>
+          </div>
+        `).join("")}
       </div>
     `;
   };
@@ -570,6 +644,10 @@ function generateReportHTML(report: Report, settings: any): string {
       background-color: #e5e7eb;
     }
     
+    .only-print {
+      display: none !important;
+    }
+    
     @media print {
       body {
         background-color: #ffffff;
@@ -583,8 +661,11 @@ function generateReportHTML(report: Report, settings: any): string {
         padding: 0;
         max-width: 100%;
       }
-      .no-print-toolbar {
+      .no-print-toolbar, .no-print {
         display: none !important;
+      }
+      .only-print {
+        display: block !important;
       }
       .meta-grid {
         background-color: #ffffff !important;
@@ -642,19 +723,19 @@ function generateReportHTML(report: Report, settings: any): string {
       </div>
       <div class="meta-item">
         <span class="meta-label">Unité du Complexe:</span>
-        <span class="meta-value">${report.unitName}</span>
+        <span class="meta-value">${escapeHtml(report.unitName)}</span>
       </div>
       <div class="meta-item">
         <span class="meta-label">Zone / Bloc:</span>
-        <span class="meta-value">${report.zone}</span>
+        <span class="meta-value">${escapeHtml(report.zone)}</span>
       </div>
       <div class="meta-item">
         <span class="meta-label">Sous-zone / Étage:</span>
-        <span class="meta-value">${report.subzone}</span>
+        <span class="meta-value">${escapeHtml(report.subzone)}</span>
       </div>
       <div class="meta-item">
         <span class="meta-label">Domaine / Catégorie:</span>
-        <span class="meta-value">${report.categoryName}</span>
+        <span class="meta-value">${escapeHtml(report.categoryName)}</span>
       </div>
       <div class="meta-item">
         <span class="meta-label">Priorité d'intervention:</span>
@@ -666,16 +747,16 @@ function generateReportHTML(report: Report, settings: any): string {
       </div>
       <div class="meta-item">
         <span class="meta-label">Rédacteur:</span>
-        <span class="meta-value">${report.author}</span>
+        <span class="meta-value">${escapeHtml(report.author)}</span>
       </div>
       <div class="meta-item" style="grid-column: span 2;">
         <span class="meta-label" style="width: 150px;">Technicien(s):</span>
-        <span class="meta-value">${report.technicians.join(", ") || "Non spécifié"}</span>
+        <span class="meta-value">${report.technicians.map(escapeHtml).join(", ") || "Non spécifié"}</span>
       </div>
       ${report.linkedReportId ? `
       <div class="meta-item" style="grid-column: span 2; border-top: 1px dashed #e5e7eb; padding-top: 10px; margin-top: 5px;">
         <span class="meta-label" style="width: 150px;">Rapport d'origine lié:</span>
-        <span class="meta-value" style="color: #2563eb; font-weight: 600;">${report.linkedReportId}</span>
+        <span class="meta-value" style="color: #2563eb; font-weight: 600;">${escapeHtml(report.linkedReportId)}</span>
       </div>
       ` : ""}
       ${report.nextVisitDate ? `
@@ -687,11 +768,11 @@ function generateReportHTML(report: Report, settings: any): string {
     </div>
 
     <div class="section-title">Description de la Panne / Constat</div>
-    <div class="text-content">${report.description || "Aucune description fournie."}</div>
+    <div class="text-content">${escapeHtml(report.description) || "Aucune description fournie."}</div>
 
     ${report.reportType !== "Constat" ? `
     <div class="section-title">Actions Réalisées et Solutions Apportées</div>
-    <div class="text-content">${report.actions || "Aucune action documentée."}</div>
+    <div class="text-content">${escapeHtml(report.actions) || "Aucune action documentée."}</div>
     ` : ""}
 
     ${report.reportType !== "Constat" ? `
@@ -730,15 +811,17 @@ function generateReportHTML(report: Report, settings: any): string {
     ${renderPhotosSection("Photographies Après Intervention", afterPhotos)}
     ` : ""}
 
+    ${renderAudioSection()}
+
     ${report.additionalObservations ? `
     <div class="section-title">Observations Complémentaires</div>
-    <div class="text-content">${report.additionalObservations}</div>
+    <div class="text-content">${escapeHtml(report.additionalObservations)}</div>
     ` : ""}
 
     <div class="signatures">
       <div class="signature-box">
         <div class="signature-title">Le Rédacteur / Technicien</div>
-        <div style="font-size: 14px; font-weight: 600; color: #065f46; margin-bottom: 5px;">${report.author}</div>
+        <div style="font-size: 14px; font-weight: 600; color: #065f46; margin-bottom: 5px;">${escapeHtml(report.author)}</div>
         <div style="font-size: 12px; color: #16a34a; font-weight: 600; display: flex; align-items: center; gap: 4px;">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
           Signature électronique validée
@@ -790,25 +873,27 @@ function generateReference(unitId: string, reportType: string, dateStr: string):
 }
 
 // Create new report
-app.post("/api/reports", (req, res) => {
-  const db = readDatabase();
-  const settings = getSettings();
-  const body = req.body;
-  
-  const dateStr = body.createdAt ? body.createdAt.split("T")[0] : new Date().toISOString().split("T")[0];
-  const ref = generateReference(body.unitId, body.reportType, dateStr);
-  
-  const dateObj = new Date(body.createdAt || new Date());
-  const year = dateObj.getFullYear().toString();
-  const month = (dateObj.getMonth() + 1).toString().padStart(2, "0");
-  
-  // Get folders setup
-  const relativeFolderPath = path.join("reports", body.unitId, year, month, ref);
-  const fullFolderPath = path.join(getResolvedStorageRoot(), relativeFolderPath);
-  
+app.post("/api/reports", async (req, res) => {
+  const release = await acquireDbMutex();
   try {
+    const db = readDatabase();
+    const settings = getSettings();
+    const body = req.body;
+    
+    const dateStr = body.createdAt ? body.createdAt.split("T")[0] : new Date().toISOString().split("T")[0];
+    const ref = generateReference(body.unitId, body.reportType, dateStr);
+    
+    const dateObj = new Date(body.createdAt || new Date());
+    const year = dateObj.getFullYear().toString();
+    const month = (dateObj.getMonth() + 1).toString().padStart(2, "0");
+    
+    // Get folders setup
+    const relativeFolderPath = path.join("reports", body.unitId, year, month, ref);
+    const fullFolderPath = path.join(getResolvedStorageRoot(), relativeFolderPath);
+    
     // Create directory
     fs.mkdirSync(path.join(fullFolderPath, "photos"), { recursive: true });
+    fs.mkdirSync(path.join(fullFolderPath, "audio"), { recursive: true });
     
     // Save photos & resolve paths
     const savedPhotos: Report["photos"] = [];
@@ -829,11 +914,80 @@ app.post("/api/reports", (req, res) => {
             url: `/api/reports/photo/${ref}/${fileName}`
           });
         } else if (photo.url) {
-          // If copying existing photo
+          // If copying existing photo, physically copy the file!
+          const match = photo.url.match(/\/api\/reports\/photo\/([^/]+)\/([^/]+)/);
+          if (match) {
+            const originalRef = match[1];
+            const originalName = match[2];
+            
+            // Find the original report to get its folderPath
+            const originalReport = db.reports.find(r => r.reference === originalRef);
+            if (originalReport && originalReport.folderPath) {
+              const srcPath = path.join(getResolvedStorageRoot(), originalReport.folderPath, "photos", originalName);
+              const destPath = path.join(fullFolderPath, "photos", photo.name);
+              
+              try {
+                if (fs.existsSync(srcPath)) {
+                  fs.copyFileSync(srcPath, destPath);
+                }
+              } catch (copyErr) {
+                console.error("Failed to copy photo file during duplication:", copyErr);
+              }
+            }
+          }
           savedPhotos.push({
             name: photo.name,
             phase: photo.phase,
             url: `/api/reports/photo/${ref}/${photo.name}`
+          });
+        }
+      });
+    }
+    
+    // Save audio notes
+    const savedAudioNotes: Report["audioNotes"] = [];
+    if (body.audioNotes && Array.isArray(body.audioNotes)) {
+      body.audioNotes.forEach((audio: any, index: number) => {
+        if (audio.data && audio.data.includes("base64,")) {
+          const mimeParts = audio.data.split(";");
+          // Extract extension from mime type or use standard webm/mp3
+          const extMatch = mimeParts[0].match(/\/([^;]+)/);
+          const ext = extMatch ? extMatch[1] : "webm";
+          const cleanBase64 = audio.data.split("base64,")[1];
+          const fileName = `audio_note_${index + 1}.${ext}`;
+          
+          const audioPath = path.join(fullFolderPath, "audio", fileName);
+          fs.writeFileSync(audioPath, Buffer.from(cleanBase64, "base64"));
+          
+          savedAudioNotes.push({
+            name: fileName,
+            url: `/api/reports/audio/${ref}/${fileName}`
+          });
+        } else if (audio.url) {
+          // If copying existing audio, physically copy the file!
+          const match = audio.url.match(/\/api\/reports\/audio\/([^/]+)\/([^/]+)/);
+          if (match) {
+            const originalRef = match[1];
+            const originalName = match[2];
+            
+            // Find the original report to get its folderPath
+            const originalReport = db.reports.find(r => r.reference === originalRef);
+            if (originalReport && originalReport.folderPath) {
+              const srcPath = path.join(getResolvedStorageRoot(), originalReport.folderPath, "audio", originalName);
+              const destPath = path.join(fullFolderPath, "audio", audio.name);
+              
+              try {
+                if (fs.existsSync(srcPath)) {
+                  fs.copyFileSync(srcPath, destPath);
+                }
+              } catch (copyErr) {
+                console.error("Failed to copy audio file during duplication:", copyErr);
+              }
+            }
+          }
+          savedAudioNotes.push({
+            name: audio.name,
+            url: `/api/reports/audio/${ref}/${audio.name}`
           });
         }
       });
@@ -860,6 +1014,7 @@ app.post("/api/reports", (req, res) => {
       duration: parseInt(body.duration, 10) || 0,
       cost: parseFloat(body.cost) || 0,
       photos: savedPhotos,
+      audioNotes: savedAudioNotes,
       linkedReportId: body.linkedReportId || undefined,
       nextVisitDate: body.nextVisitDate || undefined,
       additionalObservations: body.additionalObservations || "",
@@ -883,25 +1038,28 @@ app.post("/api/reports", (req, res) => {
   } catch (err: any) {
     console.error("Error creating report:", err);
     res.status(500).json({ error: "Échec de création du rapport: " + err.message });
+  } finally {
+    release();
   }
 });
 
 // Update report
-app.put("/api/reports/:id", (req, res) => {
-  const db = readDatabase();
-  const settings = getSettings();
-  const { id } = req.params;
-  const body = req.body;
-  
-  const reportIdx = db.reports.findIndex((r) => r.id === id);
-  if (reportIdx === -1) {
-    return res.status(404).json({ error: "Rapport introuvable" });
-  }
-  
-  const existingReport = db.reports[reportIdx];
-  const fullFolderPath = path.join(getResolvedStorageRoot(), existingReport.folderPath || "");
-  
+app.put("/api/reports/:id", async (req, res) => {
+  const release = await acquireDbMutex();
   try {
+    const db = readDatabase();
+    const settings = getSettings();
+    const { id } = req.params;
+    const body = req.body;
+    
+    const reportIdx = db.reports.findIndex((r) => r.id === id);
+    if (reportIdx === -1) {
+      return res.status(404).json({ error: "Rapport introuvable" });
+    }
+    
+    const existingReport = db.reports[reportIdx];
+    const fullFolderPath = path.join(getResolvedStorageRoot(), existingReport.folderPath || "");
+    
     // Process photos
     const savedPhotos: Report["photos"] = [];
     if (body.photos && Array.isArray(body.photos)) {
@@ -936,6 +1094,38 @@ app.put("/api/reports/:id", (req, res) => {
       });
     }
     
+    // Process audio notes
+    const savedAudioNotes: Report["audioNotes"] = [];
+    if (body.audioNotes && Array.isArray(body.audioNotes)) {
+      body.audioNotes.forEach((audio: any, index: number) => {
+        if (audio.data && audio.data.includes("base64,")) {
+          const mimeParts = audio.data.split(";");
+          const extMatch = mimeParts[0].match(/\/([^;]+)/);
+          const ext = extMatch ? extMatch[1] : "webm";
+          const cleanBase64 = audio.data.split("base64,")[1];
+          const fileName = `audio_note_new_${index + 1}.${ext}`;
+          
+          const audioFolder = path.join(fullFolderPath, "audio");
+          if (!fs.existsSync(audioFolder)) {
+            fs.mkdirSync(audioFolder, { recursive: true });
+          }
+          const audioPath = path.join(audioFolder, fileName);
+          fs.writeFileSync(audioPath, Buffer.from(cleanBase64, "base64"));
+          
+          savedAudioNotes.push({
+            name: fileName,
+            url: `/api/reports/audio/${existingReport.reference}/${fileName}`
+          });
+        } else {
+          // Existing kept audio note
+          savedAudioNotes.push({
+            name: audio.name,
+            url: audio.url || `/api/reports/audio/${existingReport.reference}/${audio.name}`
+          });
+        }
+      });
+    }
+    
     const updatedReport: Report = {
       ...existingReport,
       updatedAt: new Date().toISOString(),
@@ -955,6 +1145,7 @@ app.put("/api/reports/:id", (req, res) => {
       duration: parseInt(body.duration, 10) || 0,
       cost: parseFloat(body.cost) || 0,
       photos: savedPhotos,
+      audioNotes: savedAudioNotes,
       linkedReportId: body.linkedReportId || undefined,
       nextVisitDate: body.nextVisitDate || undefined,
       additionalObservations: body.additionalObservations || "",
@@ -977,6 +1168,8 @@ app.put("/api/reports/:id", (req, res) => {
   } catch (err: any) {
     console.error("Error updating report:", err);
     res.status(500).json({ error: "Échec de mise à jour du rapport: " + err.message });
+  } finally {
+    release();
   }
 });
 
