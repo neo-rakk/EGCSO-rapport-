@@ -1,9 +1,9 @@
 @echo off
-title EPIC EGCSO - Generateur de Rapports de Maintenance (Production)
+title EGCSO Rapport (Production)
 color 0B
 echo ======================================================================
-echo          EPIC EGCSO - COMPLEXE SPORTIF D'ORAN - ALGERIE
-echo          GENERATEUR AUTOMATIQUE DE RAPPORTS DE MAINTENANCE
+echo                     EGCSO Rapport (EPIC EGCSO ORAN)
+echo               SYSTÈME DE RAPPORTS ET SUIVI DE MAINTENANCE
 echo ======================================================================
 echo.
 if not exist "dist" (

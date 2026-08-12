@@ -96,6 +96,31 @@ export default function Settings({
   const [showNapoliConfirm, setShowNapoliConfirm] = useState(false);
   const [error, setError] = useState("");
 
+  // Update checking states (CDC / Audit Point 3.3)
+  const [updateInfo, setUpdateInfo] = useState<{
+    currentVersion: string;
+    latestVersion: string;
+    updateAvailable: boolean;
+    releaseNotes?: string;
+    error?: string;
+    githubRepo?: string;
+  } | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+
+  const handleCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    setError("");
+    try {
+      const res = await fetch("/api/update/check");
+      const data = await res.json();
+      setUpdateInfo(data);
+    } catch (err: any) {
+      setError("Échec de la recherche de mise à jour: " + err.message);
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
   useEffect(() => {
     if (appSettings) {
       setStorageRoot(appSettings.storageRoot || "");
@@ -1350,6 +1375,116 @@ export default function Settings({
           <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-800 flex-shrink-0" />
             <p className="text-xs font-bold text-emerald-800">{restoreSuccess}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Update & Versioning Section (CDC / Audit Point 3.3) */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-5">
+        <div className="pb-3 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 text-emerald-850" />
+              Mises à Jour du Système
+            </h3>
+            <p className="text-[11px] text-slate-500 font-semibold mt-1">
+              Vérifiez la disponibilité de nouvelles fonctionnalités ou d'optimisations de performance directement depuis le dépôt officiel.
+            </p>
+          </div>
+          <button
+            onClick={handleCheckUpdate}
+            disabled={checkingUpdate}
+            className="self-start sm:self-center bg-slate-900 hover:bg-slate-950 disabled:bg-slate-200 text-white font-bold text-xs py-2 px-4 rounded-lg flex items-center gap-2 cursor-pointer transition-colors"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${checkingUpdate ? "animate-spin" : ""}`} />
+            {checkingUpdate ? "Recherche en cours..." : "Vérifier les mises à jour"}
+          </button>
+        </div>
+
+        {updateInfo ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-slate-50 border border-slate-100 p-3 rounded-lg text-center">
+                <span className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Version Installée</span>
+                <span className="text-sm font-black text-slate-700">{updateInfo.currentVersion}</span>
+              </div>
+              <div className="bg-slate-50 border border-slate-100 p-3 rounded-lg text-center">
+                <span className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Dernière Version</span>
+                <span className={`text-sm font-black ${updateInfo.updateAvailable ? "text-emerald-800" : "text-slate-700"}`}>
+                  {updateInfo.latestVersion}
+                </span>
+              </div>
+              <div className="bg-slate-50 border border-slate-100 p-3 rounded-lg text-center flex items-center justify-center">
+                {updateInfo.updateAvailable ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-50 text-emerald-800 border border-emerald-200 animate-pulse">
+                    Mise à jour disponible !
+                  </span>
+                ) : updateInfo.error ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                    Mode Hors-Ligne / Limité
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                    Système à jour
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {updateInfo.error && (
+              <div className="p-3 bg-slate-50 border border-slate-150 rounded-lg text-xs text-slate-600 leading-relaxed">
+                <strong>Remarque de recherche :</strong> {updateInfo.error}. Si le serveur n'a pas accès à l'Internet public, vous pouvez installer la mise à jour en téléchargeant le package et en remplaçant manuellement les fichiers.
+              </div>
+            )}
+
+            {updateInfo.updateAvailable && (
+              <div className="border border-emerald-100 bg-emerald-50/30 rounded-lg p-5 space-y-4">
+                <div className="space-y-1">
+                  <h4 className="text-xs font-black uppercase text-emerald-850 flex items-center gap-1.5">
+                    🚀 Nouvelle version disponible : {updateInfo.latestVersion}
+                  </h4>
+                  <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                    Une nouvelle version a été publiée pour l'application **EGCSO Rapport** sur le dépôt **{updateInfo.githubRepo}**.
+                  </p>
+                </div>
+
+                {updateInfo.releaseNotes && (
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Notes de version :</span>
+                    <div className="bg-white border border-slate-200/60 rounded-lg p-4 text-xs text-slate-700 font-medium overflow-auto max-h-40 whitespace-pre-wrap leading-relaxed">
+                      {updateInfo.releaseNotes}
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-amber-50 border border-amber-200/70 rounded-lg p-4 text-xs text-amber-850 leading-relaxed space-y-2">
+                  <p className="font-bold flex items-center gap-1.5">
+                    ⚠️ Procédure de mise à jour sécurisée :
+                  </p>
+                  <ol className="list-decimal list-inside space-y-1 text-[11px] font-semibold text-slate-755 pl-1">
+                    <li>Fermez cette fenêtre de navigateur et arrêtez le serveur local (appuyez sur <kbd className="bg-white border px-1 rounded">Ctrl+C</kbd> ou fermez l'invite de commande noire).</li>
+                    <li>Double-cliquez sur le fichier <strong className="font-bold text-slate-900">update.bat</strong> situé dans le dossier de l'application (ou utilisez votre raccourci de mise à jour).</li>
+                    <li>Le script va automatiquement sauvegarder toutes vos données d'activité (rapports, photos, fiches de pannes) sous forme de ZIP horodaté dans le dossier <code className="bg-slate-100 px-1 rounded font-mono">backups/</code>.</li>
+                    <li>Il téléchargera et appliquera sélectivement le nouveau code avant de recompiler l'application.</li>
+                    <li>Relancez simplement <strong className="font-bold text-slate-900">start.bat</strong> lorsque la mise à jour est terminée !</li>
+                  </ol>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-6 border border-dashed border-slate-200 rounded-lg bg-slate-50/40">
+            <p className="text-xs text-slate-500 font-semibold">
+              Aucune recherche de mise à jour n'a encore été effectuée dans cette session.
+            </p>
+            <button
+              onClick={handleCheckUpdate}
+              disabled={checkingUpdate}
+              className="mt-2.5 inline-flex items-center gap-1.5 bg-emerald-800 hover:bg-emerald-950 text-white font-bold text-[11px] py-1.5 px-3.5 rounded-lg cursor-pointer transition-colors shadow-sm"
+            >
+              <RefreshCw className={`w-3 h-3 ${checkingUpdate ? "animate-spin" : ""}`} />
+              Rechercher maintenant
+            </button>
           </div>
         )}
       </div>

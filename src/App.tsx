@@ -244,11 +244,11 @@ export default function App() {
       {/* SIDEBAR FOR DESKTOP */}
       <aside className="hidden lg:flex flex-col w-64 bg-slate-900 border-r border-slate-800 text-slate-300">
         <div className="p-6 border-b border-slate-800 flex items-center gap-2.5">
-          <div className="w-9 h-9 bg-amber-500 rounded-lg flex items-center justify-center text-slate-950 font-black text-sm shadow-md">
-            CSO
+          <div className="w-9 h-9 bg-emerald-700 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-md border border-emerald-500/30">
+            EGCSO
           </div>
           <div>
-            <h1 className="font-extrabold text-white text-sm tracking-wide leading-tight">EPIC EGCSO</h1>
+            <h1 className="font-extrabold text-white text-sm tracking-wide leading-tight">EGCSO Rapport</h1>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Service Maintenance</p>
           </div>
         </div>
@@ -278,7 +278,7 @@ export default function App() {
         </nav>
 
         <div className="p-4 border-t border-slate-800 text-center text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-          Oran, Algérie &bull; v1.0
+          Oran, Algérie &bull; v2.1.0
         </div>
       </aside>
 
@@ -404,10 +404,10 @@ export default function App() {
           <div className="w-64 bg-slate-900 text-slate-300 flex flex-col h-full animate-slide-right">
             <div className="p-6 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center text-slate-950 font-black text-xs">
-                  CSO
+                <div className="w-8 h-8 bg-emerald-700 rounded-lg flex items-center justify-center text-white font-black text-[10px] border border-emerald-500/30">
+                  EGCSO
                 </div>
-                <h1 className="font-extrabold text-white text-xs">EPIC EGCSO</h1>
+                <h1 className="font-extrabold text-white text-xs">EGCSO Rapport</h1>
               </div>
               <button
                 onClick={() => setMobileMenuOpen(false)}
@@ -443,7 +443,7 @@ export default function App() {
             </nav>
 
             <div className="p-4 border-t border-slate-800 text-center text-[9px] text-slate-500 font-bold uppercase">
-              EPIC EGCSO Oran &bull; v1.0
+              EPIC EGCSO Oran &bull; v2.1.0
             </div>
           </div>
           <div className="flex-1" onClick={() => setMobileMenuOpen(false)}></div>

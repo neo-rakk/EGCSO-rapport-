@@ -1,5 +1,5 @@
 {
-  "storageRoot": "./EGCSO_Maintenance",
+  "storageRoot": "C:\\EGCSO_Maintenance",
   "companyName": "EPIC EGCSO",
   "departmentName": "Service Maintenance",
   "referenceFormat": "EGCSO-[CODE_UNITE]-[TYPE]-[AAAAMMJJ]-[SEQ]"

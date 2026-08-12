@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import AdmZip from "adm-zip";
+import https from "https";
 import { createServer as createViteServer } from "vite";
 
 interface AudioNote {
@@ -79,6 +80,36 @@ app.use((req, res, next) => {
   return res.status(401).send("Identifiants de sécurité incorrects.");
 });
 
+// Ensure configuration template files are initialized
+function ensureConfigFiles() {
+  const configDir = path.resolve(process.cwd(), "config");
+  if (!fs.existsSync(configDir)) {
+    fs.mkdirSync(configDir, { recursive: true });
+  }
+
+  const files = [
+    { target: "settings.json", default: "settings.default.json" },
+    { target: "unites.json", default: "unites.default.json" },
+    { target: "categories_pannes.json", default: "categories_pannes.default.json" }
+  ];
+
+  files.forEach(f => {
+    const targetPath = path.join(configDir, f.target);
+    const defaultPath = path.join(configDir, f.default);
+    if (!fs.existsSync(targetPath)) {
+      if (fs.existsSync(defaultPath)) {
+        console.log(`Copying missing config file: ${f.target} from template`);
+        fs.copyFileSync(defaultPath, targetPath);
+      } else {
+        console.error(`Default config template not found for ${f.target}`);
+      }
+    }
+  });
+}
+
+// Initialise configuration files
+ensureConfigFiles();
+
 // Dynamic helper to get current storage paths
 function getSettings() {
   const settingsPath = path.resolve(process.cwd(), "config/settings.json");
@@ -90,7 +121,7 @@ function getSettings() {
     console.error("Error reading settings.json, returning defaults:", err);
   }
   return {
-    storageRoot: "./EGCSO_Maintenance",
+    storageRoot: "C:\\EGCSO_Maintenance",
     companyName: "EPIC EGCSO",
     departmentName: "Service Maintenance",
     referenceFormat: "EGCSO-[CODE_UNITE]-[TYPE]-[AAAAMMJJ]-[SEQ]"
@@ -99,7 +130,20 @@ function getSettings() {
 
 function getResolvedStorageRoot() {
   const settings = getSettings();
-  return path.resolve(process.cwd(), settings.storageRoot);
+  const targetPath = settings.storageRoot;
+  
+  if (process.platform === "win32") {
+    if (path.isAbsolute(targetPath)) {
+      return targetPath;
+    }
+    return path.resolve(process.cwd(), targetPath);
+  } else {
+    // On Linux/macOS dev container, resolve relative or fallback safely to prevent crash
+    if (targetPath.includes(":\\") || targetPath.startsWith("C:")) {
+      return path.resolve(process.cwd(), "EGCSO_Maintenance");
+    }
+    return path.resolve(process.cwd(), targetPath);
+  }
 }
 
 function ensureStorageStructure() {
@@ -192,6 +236,101 @@ app.post("/api/settings", (req, res) => {
     res.json(updated);
   } catch (err: any) {
     res.status(500).json({ error: "Impossible de sauvegarder les paramètres: " + err.message });
+  }
+});
+
+// Update checking endpoints (CDC / Audit Point 3.3)
+app.get("/api/update/check", async (req, res) => {
+  let localVersion = "2.1.0";
+  try {
+    const vPath = path.resolve(process.cwd(), "VERSION");
+    if (fs.existsSync(vPath)) {
+      localVersion = fs.readFileSync(vPath, "utf-8").trim();
+    }
+  } catch (err) {
+    console.error("Error reading VERSION file:", err);
+  }
+
+  const settings = getSettings();
+  let repoOwner = "ghemri-info";
+  let repoName = "egcso-rapport";
+  if (settings.githubRepo) {
+    const parts = settings.githubRepo.split("/");
+    if (parts.length === 2) {
+      repoOwner = parts[0];
+      repoName = parts[1];
+    }
+  }
+
+  const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/releases/latest`;
+  
+  const options = {
+    headers: {
+      "User-Agent": "EGCSO-Rapport-Server",
+      "Accept": "application/vnd.github.v3+json"
+    } as Record<string, string>
+  };
+
+  if (process.env.GITHUB_TOKEN) {
+    options.headers["Authorization"] = `token ${process.env.GITHUB_TOKEN}`;
+  }
+
+  const requestHttps = (url: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      https.get(url, options, (apiRes) => {
+        if (apiRes.statusCode === 301 || apiRes.statusCode === 302) {
+          requestHttps(apiRes.headers.location || "").then(resolve).catch(reject);
+          return;
+        }
+        if (apiRes.statusCode !== 200) {
+          reject(new Error(`Code statut ${apiRes.statusCode}`));
+          return;
+        }
+        let data = "";
+        apiRes.on("data", (chunk) => { data += chunk; });
+        apiRes.on("end", () => { resolve(data); });
+      }).on("error", reject);
+    });
+  };
+
+  try {
+    const rawData = await requestHttps(apiUrl);
+    const release = JSON.parse(rawData);
+    
+    const latestVersion = release.tag_name;
+    const body = release.body || "";
+    
+    const hasUpdate = (latest: string, current: string): boolean => {
+      try {
+        const lParts = latest.replace(/[^0-9.]/g, "").split(".").map(Number);
+        const cParts = current.replace(/[^0-9.]/g, "").split(".").map(Number);
+        for (let i = 0; i < Math.max(lParts.length, cParts.length); i++) {
+          const l = lParts[i] || 0;
+          const c = cParts[i] || 0;
+          if (l > c) return true;
+          if (l < c) return false;
+        }
+      } catch (err) {}
+      return latest !== current;
+    };
+
+    res.json({
+      currentVersion: localVersion,
+      latestVersion,
+      updateAvailable: hasUpdate(latestVersion, localVersion),
+      releaseNotes: body,
+      publishedAt: release.published_at,
+      zipUrl: release.zipball_url,
+      githubRepo: `${repoOwner}/${repoName}`
+    });
+  } catch (err: any) {
+    res.json({
+      currentVersion: localVersion,
+      latestVersion: localVersion,
+      updateAvailable: false,
+      error: "Impossible de joindre le serveur de mise à jour: " + err.message,
+      githubRepo: `${repoOwner}/${repoName}`
+    });
   }
 });
 

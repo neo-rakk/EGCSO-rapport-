@@ -1,5 +1,5 @@
 {
-  "name": "Rapports de Maintenance EGCSO",
+  "name": "EGCSO Rapport",
   "description": "Application autonome pour la génération, l'indexation et la recherche de rapports de maintenance pour l'EPIC EGCSO Oran.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
