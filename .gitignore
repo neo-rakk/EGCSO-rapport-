@@ -13,3 +13,5 @@ config/categories_pannes.json
 config/settings.json
 EGCSO_Maintenance/
 _update_tmp/
+update_in_progress.lock
+backups/

@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import { exec } from "child_process";
+import { exec, spawn } from "child_process";
 import AdmZip from "adm-zip";
 import https from "https";
 import { createServer as createViteServer } from "vite";
@@ -342,28 +342,42 @@ app.post("/api/update/apply", (req, res) => {
     return res.status(404).json({ error: "Fichier de mise à jour update.mjs introuvable." });
   }
 
+  // Create update_in_progress lock file to tell start.bat to hold server restart
+  const lockFile = path.resolve(process.cwd(), "update_in_progress.lock");
+  try {
+    fs.writeFileSync(lockFile, "1", "utf-8");
+  } catch (err: any) {
+    console.error("❌ Impossible de créer le fichier de verrou de mise à jour:", err.message);
+  }
+
   // Respond immediately so the browser client receives the acknowledgment
   res.json({
     success: true,
     message: "L'installation automatique de la mise à jour a été démarrée en arrière-plan. Vos données d'activité existantes seront automatiquement sauvegardées avant l'application des nouveaux fichiers."
   });
 
-  // Launch update.mjs asynchronously
-  console.log("[1-Click Update] Lancement du script de mise à jour automatique update.mjs...");
-  exec("node update.mjs", { cwd: process.cwd() }, (error, stdout, stderr) => {
-    if (error) {
-      console.error("❌ [1-Click Update] Erreur lors de l'exécution de la mise à jour:", error.message);
-      console.error(stderr);
-      return;
-    }
-    console.log("✅ [1-Click Update] Output de mise à jour:\n", stdout);
-    console.log("🔄 [1-Click Update] Mise à jour appliquée avec succès. Redémarrage du serveur...");
+  // Launch update.mjs as a completely detached and unreferenced process
+  console.log("[1-Click Update] Lancement détaché de update.mjs pour la mise à jour automatique...");
+  try {
+    const child = spawn("node", ["update.mjs"], {
+      cwd: process.cwd(),
+      detached: true,
+      stdio: "ignore"
+    });
     
-    // Graceful process exit to trigger auto-restart from start.bat loop
+    child.unref();
+
+    // Graceful process exit to release all file locks on Windows and trigger auto-restart wait state in start.bat loop
     setTimeout(() => {
+      console.log("🔄 Arrêt du serveur pour permettre le remplacement des fichiers par le script de mise à jour...");
       process.exit(0);
     }, 1500);
-  });
+  } catch (err: any) {
+    console.error("❌ [1-Click Update] Erreur lors du lancement de update.mjs:", err.message);
+    try {
+      if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
+    } catch (_) {}
+  }
 });
 
 // Config lists endpoints

@@ -42,6 +42,14 @@ if not exist "%SHORTCUT_PATH%" (
 
 :: 3. BOUCLE DU SERVEUR DE PRODUCTION AVEC REPRISE AUTOMATIQUE POST-UPDATE
 :SERVER_LOOP
+:: Garde-fou : attente si une mise à jour automatique est en cours d'application par update.mjs
+if exist "update_in_progress.lock" (
+    echo [Mise a jour] Une mise a jour automatique est en cours d'installation...
+    echo [Mise a jour] En attente de la liberation et du remplacement des fichiers...
+    timeout /t 2 /nobreak >nul
+    goto SERVER_LOOP
+)
+
 if not exist "dist" (
     echo [Préparation] Compilation initiale détectée. Installation des dépendances...
     call npm install --no-audit --no-fund

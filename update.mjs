@@ -8,6 +8,19 @@ import dotenv from "dotenv";
 // Load local environment variables
 dotenv.config();
 
+// Ensure update_in_progress.lock is always deleted on exit
+process.on("exit", () => {
+  try {
+    const lockFile = path.resolve(process.cwd(), "update_in_progress.lock");
+    if (fs.existsSync(lockFile)) {
+      fs.unlinkSync(lockFile);
+      console.log("🧹 Verrou update_in_progress.lock libéré.");
+    }
+  } catch (err) {
+    // Ignore error
+  }
+});
+
 const VERSION_FILE = path.resolve(process.cwd(), "VERSION");
 const SETTINGS_FILE = path.resolve(process.cwd(), "config/settings.json");
 
