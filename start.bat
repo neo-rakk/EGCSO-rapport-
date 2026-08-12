@@ -40,7 +40,8 @@ if not exist "%SHORTCUT_PATH%" (
     echo.
 )
 
-:: 3. VÉRIFICATION DU BUILD DE PRODUCTION
+:: 3. BOUCLE DU SERVEUR DE PRODUCTION AVEC REPRISE AUTOMATIQUE POST-UPDATE
+:SERVER_LOOP
 if not exist "dist" (
     echo [Préparation] Compilation initiale détectée. Installation des dépendances...
     call npm install --no-audit --no-fund
@@ -51,10 +52,14 @@ if not exist "dist" (
     echo [OK] Code applicatif à jour et pré-compilé.
 )
 echo.
-echo Démarrage du serveur de Production...
-echo L'application sera accessible à l'adresse : http://localhost:3000
+echo Démarrage du serveur de Production EGCSO Rapport...
+echo L'application est accessible à l'adresse : http://localhost:3000
 echo.
 start http://localhost:3000
 call npm start
-pause
+
+echo.
+echo [Information] Redémarrage automatique du serveur suite à une mise à jour ou interruption...
+timeout /t 3 /nobreak >nul
+goto SERVER_LOOP
 

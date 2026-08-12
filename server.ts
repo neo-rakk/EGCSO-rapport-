@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import { exec } from "child_process";
 import AdmZip from "adm-zip";
 import https from "https";
 import { createServer as createViteServer } from "vite";
@@ -332,6 +333,37 @@ app.get("/api/update/check", async (req, res) => {
       githubRepo: `${repoOwner}/${repoName}`
     });
   }
+});
+
+// Trigger 1-Click Update Execution
+app.post("/api/update/apply", (req, res) => {
+  const updateScript = path.resolve(process.cwd(), "update.mjs");
+  if (!fs.existsSync(updateScript)) {
+    return res.status(404).json({ error: "Fichier de mise à jour update.mjs introuvable." });
+  }
+
+  // Respond immediately so the browser client receives the acknowledgment
+  res.json({
+    success: true,
+    message: "L'installation automatique de la mise à jour a été démarrée en arrière-plan. Vos données d'activité existantes seront automatiquement sauvegardées avant l'application des nouveaux fichiers."
+  });
+
+  // Launch update.mjs asynchronously
+  console.log("[1-Click Update] Lancement du script de mise à jour automatique update.mjs...");
+  exec("node update.mjs", { cwd: process.cwd() }, (error, stdout, stderr) => {
+    if (error) {
+      console.error("❌ [1-Click Update] Erreur lors de l'exécution de la mise à jour:", error.message);
+      console.error(stderr);
+      return;
+    }
+    console.log("✅ [1-Click Update] Output de mise à jour:\n", stdout);
+    console.log("🔄 [1-Click Update] Mise à jour appliquée avec succès. Redémarrage du serveur...");
+    
+    // Graceful process exit to trigger auto-restart from start.bat loop
+    setTimeout(() => {
+      process.exit(0);
+    }, 1500);
+  });
 });
 
 // Config lists endpoints

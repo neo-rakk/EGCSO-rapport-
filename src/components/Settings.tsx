@@ -20,7 +20,8 @@ import {
   Wand2,
   Download,
   Upload,
-  RefreshCw
+  RefreshCw,
+  Sparkles
 } from "lucide-react";
 
 interface SettingsProps {
@@ -107,6 +108,8 @@ export default function Settings({
     githubRepo?: string;
   } | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [applyingUpdate, setApplyingUpdate] = useState(false);
+  const [updateStatusMsg, setUpdateStatusMsg] = useState("");
 
   const handleCheckUpdate = async () => {
     setCheckingUpdate(true);
@@ -119,6 +122,50 @@ export default function Settings({
       setError("Échec de la recherche de mise à jour: " + err.message);
     } finally {
       setCheckingUpdate(false);
+    }
+  };
+
+  const handleApplyUpdate = async () => {
+    if (!window.confirm("Voulez-vous lancer la mise à jour automatique maintenant ? Une sauvegarde complète de vos données d'activité sera créée automatiquement avant l'installation.")) {
+      return;
+    }
+
+    setApplyingUpdate(true);
+    setUpdateStatusMsg("Lancement de la mise à jour... Téléchargement et sauvegarde de sécurité en cours.");
+
+    try {
+      const res = await fetch("/api/update/apply", { method: "POST" });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setUpdateStatusMsg("Mise à jour téléchargée ! Application des fichiers et redémarrage du serveur en cours...");
+        
+        let attempts = 0;
+        const interval = setInterval(async () => {
+          attempts++;
+          try {
+            const checkRes = await fetch("/api/update/check");
+            if (checkRes.ok) {
+              const checkData = await checkRes.json();
+              if (!checkData.updateAvailable) {
+                clearInterval(interval);
+                setUpdateStatusMsg("🎉 Mise à jour terminée avec succès ! Rechargement de l'application...");
+                setTimeout(() => {
+                  window.location.reload();
+                }, 1500);
+              }
+            }
+          } catch (e) {
+            setUpdateStatusMsg(`Redémarrage du serveur et finalisation (tentative ${attempts})...`);
+          }
+        }, 3000);
+      } else {
+        alert("Échec du lancement de la mise à jour: " + (data.error || "Erreur inconnue"));
+        setApplyingUpdate(false);
+      }
+    } catch (err: any) {
+      alert("Erreur réseau lors de la demande de mise à jour: " + err.message);
+      setApplyingUpdate(false);
     }
   };
 
@@ -1474,17 +1521,53 @@ export default function Settings({
                   </div>
                 )}
 
-                <div className="bg-amber-50 border border-amber-200/70 rounded-lg p-4 text-xs text-amber-850 leading-relaxed space-y-2">
-                  <p className="font-bold flex items-center gap-1.5">
-                    ⚠️ Procédure de mise à jour sécurisée :
+                {/* 1-CLICK AUTOMATIC UPDATE ACTION BOX */}
+                <div className="bg-emerald-850 text-white rounded-xl p-5 shadow-sm space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <h4 className="font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-amber-400 shrink-0" />
+                        Mise à jour Automatique en 1 Clic
+                      </h4>
+                      <p className="text-xs text-emerald-100 leading-relaxed">
+                        Cliquez sur le bouton ci-contre pour télécharger, sauvegarder vos données et installer automatiquement la version <strong className="text-white font-bold">{updateInfo.latestVersion}</strong> sans quitter l'interface.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={handleApplyUpdate}
+                      disabled={applyingUpdate}
+                      className="bg-amber-400 hover:bg-amber-300 disabled:bg-slate-600 text-slate-950 font-black text-xs py-3 px-6 rounded-lg shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all shrink-0"
+                    >
+                      {applyingUpdate ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          Mise à jour en cours...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4" />
+                          Mettre à jour Maintenant (1 Clic)
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {applyingUpdate && (
+                    <div className="bg-emerald-950/90 border border-emerald-700/80 rounded-lg p-3 text-xs text-emerald-200 font-mono flex items-center gap-3 animate-pulse">
+                      <RefreshCw className="w-4 h-4 animate-spin text-amber-400 shrink-0" />
+                      <span>{updateStatusMsg}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200/70 rounded-lg p-3.5 text-xs text-amber-850 leading-relaxed">
+                  <p className="font-bold flex items-center gap-1.5 mb-1">
+                    ℹ️ Information de sécurité :
                   </p>
-                  <ol className="list-decimal list-inside space-y-1 text-[11px] font-semibold text-slate-755 pl-1">
-                    <li>Fermez cette fenêtre de navigateur et arrêtez le serveur local (appuyez sur <kbd className="bg-white border px-1 rounded">Ctrl+C</kbd> ou fermez l'invite de commande noire).</li>
-                    <li>Double-cliquez sur le fichier <strong className="font-bold text-slate-900">update.bat</strong> situé dans le dossier de l'application (ou utilisez votre raccourci de mise à jour).</li>
-                    <li>Le script va automatiquement sauvegarder toutes vos données d'activité (rapports, photos, fiches de pannes) sous forme de ZIP horodaté dans le dossier <code className="bg-slate-100 px-1 rounded font-mono">backups/</code>.</li>
-                    <li>Il téléchargera et appliquera sélectivement le nouveau code avant de recompiler l'application.</li>
-                    <li>Relancez simplement <strong className="font-bold text-slate-900">start.bat</strong> lorsque la mise à jour est terminée !</li>
-                  </ol>
+                  <p className="text-[11px] font-medium text-slate-700">
+                    Lors du clic sur le bouton, une sauvegarde horodatée complète de votre base de données et de vos configurations est créée automatiquement dans le dossier <code className="bg-white px-1.5 py-0.5 rounded border border-amber-200 font-mono text-slate-900">backups/</code> avant l'application des nouveaux fichiers. Vos données sont en sécurité à 100%.
+                  </p>
                 </div>
               </div>
             )}

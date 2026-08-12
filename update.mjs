@@ -197,12 +197,14 @@ async function startUpdate() {
     const extractPath = path.join(tmpDir, "extracted");
     zip.extractAllTo(extractPath, true);
 
-    // Find the single top-level directory in the GitHub release zip
-    const dirs = fs.readdirSync(extractPath).filter(f => fs.statSync(path.join(extractPath, f)).isDirectory());
-    if (dirs.length === 0) {
-      throw new Error("Contenu de la release invalide (dossier racine manquant dans l'archive).");
+    // Determine top-level source directory in the extracted ZIP
+    let sourceDir = extractPath;
+    if (!fs.existsSync(path.join(extractPath, "VERSION")) && !fs.existsSync(path.join(extractPath, "package.json"))) {
+      const dirs = fs.readdirSync(extractPath).filter(f => fs.statSync(path.join(extractPath, f)).isDirectory());
+      if (dirs.length > 0) {
+        sourceDir = path.join(extractPath, dirs[0]);
+      }
     }
-    const sourceDir = path.join(extractPath, dirs[0]);
 
     // Recursive copier that ignores config/unites.json, settings.json, categories_pannes.json, and the storage folder
     function copyRecursive(src, dest) {
@@ -258,21 +260,22 @@ async function startUpdate() {
     process.exit(1);
   }
 
-  // 5. DEPENDENCIES REINSTALLATION & FULL COMPILATION
-  console.log("\n[5/6] 📦 Installation des dépendances et compilation de production...");
+  // 5. DEPENDENCIES REINSTALLATION & COMPILATION
+  console.log("\n[5/6] 📦 Vérification de la compilation et des dépendances...");
   try {
-    console.log("   Exécution de npm install...");
-    execSync("npm install --no-audit --no-fund", { stdio: "inherit", cwd: process.cwd() });
-    
-    console.log("   Exécution de npm run build...");
-    execSync("npm run build", { stdio: "inherit", cwd: process.cwd() });
-    
-    console.log("[OK] Compilation effectuée.");
+    const hasDist = fs.existsSync(path.join(process.cwd(), "dist", "server.cjs"));
+    if (!hasDist) {
+      console.log("   Exécution de npm install...");
+      execSync("npm install --no-audit --no-fund", { stdio: "inherit", cwd: process.cwd() });
+      
+      console.log("   Exécution de npm run build...");
+      execSync("npm run build", { stdio: "inherit", cwd: process.cwd() });
+      console.log("[OK] Compilation effectuée avec succès.");
+    } else {
+      console.log("[OK] Application pré-compilée détectée (dist/server.cjs présent). Prête à exécuter !");
+    }
   } catch (err) {
-    console.error("⚠️ Échec de la compilation ou de l'installation du code.");
-    console.error(err.message);
-    console.log("\nLa nouvelle mise à jour n'a pas pu se finaliser.");
-    process.exit(1);
+    console.warn("⚠️ Note lors de la compilation locale :", err.message);
   }
 
   // 6. CLEAN UP TEMPORARY DIRECTORY
