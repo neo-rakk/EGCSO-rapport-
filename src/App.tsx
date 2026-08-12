@@ -278,7 +278,7 @@ export default function App() {
         </nav>
 
         <div className="p-4 border-t border-slate-800 text-center text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-          Oran, Algérie &bull; v2.1.0
+          EGCSO RAPPORT &bull; v2.1.2
         </div>
       </aside>
 
@@ -443,7 +443,7 @@ export default function App() {
             </nav>
 
             <div className="p-4 border-t border-slate-800 text-center text-[9px] text-slate-500 font-bold uppercase">
-              EPIC EGCSO Oran &bull; v2.1.0
+              EGCSO RAPPORT &bull; v2.1.2
             </div>
           </div>
           <div className="flex-1" onClick={() => setMobileMenuOpen(false)}></div>
