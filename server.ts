@@ -240,42 +240,44 @@ app.post("/api/settings", (req, res) => {
   }
 });
 
-// App Version Endpoint
-app.get("/api/version", (req, res) => {
-  let version = "2.1.2";
+// Dynamic helper to resolve current application version
+function getAppVersion(): string {
   try {
     const vPath = path.resolve(process.cwd(), "VERSION");
     if (fs.existsSync(vPath)) {
       const content = fs.readFileSync(vPath, "utf-8").trim();
-      if (content) version = content;
+      if (content) return content;
+    }
+    const pkgPath = path.resolve(process.cwd(), "package.json");
+    if (fs.existsSync(pkgPath)) {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+      if (pkg.version) return pkg.version;
     }
   } catch (err) {
-    console.error("Error reading VERSION file:", err);
+    console.error("Error reading version file:", err);
   }
-  res.json({ version });
+  return "2.3.1";
+}
+
+// App Version Endpoint
+app.get("/api/version", (req, res) => {
+  res.json({ version: getAppVersion() });
 });
 
 // Update checking endpoints (CDC / Audit Point 3.3)
 app.get("/api/update/check", async (req, res) => {
-  let localVersion = "2.1.2";
-  try {
-    const vPath = path.resolve(process.cwd(), "VERSION");
-    if (fs.existsSync(vPath)) {
-      const content = fs.readFileSync(vPath, "utf-8").trim();
-      if (content) localVersion = content;
-    }
-  } catch (err) {
-    console.error("Error reading VERSION file:", err);
-  }
+  const localVersion = getAppVersion();
+  const cleanLocal = localVersion.replace(/^v/i, "").trim();
 
   const settings = getSettings();
   let repoOwner = "neo-rakk";
   let repoName = "EGCSO-rapport-";
   if (settings.githubRepo) {
-    const parts = settings.githubRepo.split("/");
+    const cleanRepo = settings.githubRepo.trim().replace(/\/+$/, "");
+    const parts = cleanRepo.split("/");
     if (parts.length === 2) {
-      repoOwner = parts[0];
-      repoName = parts[1];
+      repoOwner = parts[0].trim();
+      repoName = parts[1].trim();
     }
   }
 
@@ -283,7 +285,7 @@ app.get("/api/update/check", async (req, res) => {
   
   const options = {
     headers: {
-      "User-Agent": "EGCSO-Rapport-Server",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) EGCSO-Rapport-Server",
       "Accept": "application/vnd.github.v3+json"
     } as Record<string, string>
   };
@@ -314,7 +316,8 @@ app.get("/api/update/check", async (req, res) => {
     const rawData = await requestHttps(apiUrl);
     const release = JSON.parse(rawData);
     
-    const latestVersion = release.tag_name;
+    const rawLatestVersion = release.tag_name || "";
+    const cleanLatest = rawLatestVersion.replace(/^v/i, "").trim();
     const body = release.body || "";
     
     const hasUpdate = (latest: string, current: string): boolean => {
@@ -332,9 +335,9 @@ app.get("/api/update/check", async (req, res) => {
     };
 
     res.json({
-      currentVersion: localVersion,
-      latestVersion,
-      updateAvailable: hasUpdate(latestVersion, localVersion),
+      currentVersion: cleanLocal,
+      latestVersion: cleanLatest,
+      updateAvailable: hasUpdate(cleanLatest, cleanLocal),
       releaseNotes: body,
       publishedAt: release.published_at,
       zipUrl: release.zipball_url,
@@ -342,8 +345,8 @@ app.get("/api/update/check", async (req, res) => {
     });
   } catch (err: any) {
     res.json({
-      currentVersion: localVersion,
-      latestVersion: localVersion,
+      currentVersion: cleanLocal,
+      latestVersion: cleanLocal,
       updateAvailable: false,
       error: "Impossible de joindre le serveur de mise à jour: " + err.message,
       githubRepo: `${repoOwner}/${repoName}`

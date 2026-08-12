@@ -30,11 +30,12 @@ jobs:
       - name: ⚙️ Compilation de production
         run: npm run build
 
-      - name: 🏷️ Synchronisation automatique du fichier VERSION
+      - name: 🏷️ Synchronisation automatique des fichiers de version
         run: |
           CLEAN_TAG=$(echo "${{ github.ref_name }}" | sed 's/^v//')
           echo "$CLEAN_TAG" > VERSION
-          echo "Fichier VERSION mis à jour avec le tag : $CLEAN_TAG"
+          npm version "$CLEAN_TAG" --no-git-tag-version
+          echo "Fichiers VERSION et package.json mis à jour avec le tag : $CLEAN_TAG"
 
       - name: 📂 Préparation du pack de production pré-compilé
         run: |
@@ -54,7 +55,8 @@ jobs:
           cp package.json release_package/
           [ -f package-lock.json ] && cp package-lock.json release_package/ || true
           cp server.ts release_package/
-          cp -r assets/* release_package/assets/
+          [ -d assets ] && cp -r assets/* release_package/assets/ || true
+          [ -d scripts ] && cp -r scripts release_package/ || true
 
           # Copie des configurations d'usine par défaut uniquement (Garde-fou : pas de données utilisateur !)
           cp config/*.default.json release_package/config/
