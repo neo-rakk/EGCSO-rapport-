@@ -324,7 +324,7 @@ async function startUpdate() {
   console.log("\n[5/6] 📦 Vérification des dépendances et de la compilation...");
   try {
     console.log("   Exécution de npm install pour garantir les dépendances système...");
-    execSync("npm install --omit=dev --no-audit --no-fund", { stdio: "inherit", cwd: process.cwd() });
+    execSync("npm install --no-audit --no-fund", { stdio: "inherit", cwd: process.cwd() });
 
     const hasDist = fs.existsSync(path.join(process.cwd(), "dist", "server.cjs"));
     if (!hasDist) {
