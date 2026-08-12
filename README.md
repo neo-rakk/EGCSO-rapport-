@@ -2,6 +2,8 @@
 ## Système de Rapports, Indexation et Suivi de la Maintenance — EPIC EGCSO Oran
 **Établissement de Gestion du Complexe Sportif d'Oran — Service Maintenance & Travaux**
 
+[![EGCSO Rapport CI/CD Release](https://github.com/neo-rakk/EGCSO-rapport-/actions/workflows/release.yml/badge.svg)](https://github.com/neo-rakk/EGCSO-rapport-/actions/workflows/release.yml)
+
 ---
 
 **EGCSO Rapport** (version `2.1.0`) est une application locale, autonome, sécurisée et optimisée pour une utilisation hors-ligne. Elle permet de structurer, rédiger, indexer et retrouver instantanément l'intégralité des fiches techniques d'intervention, rapports de suivi et constats de panne sur l'ensemble des infrastructures du complexe sportif d'Oran.
