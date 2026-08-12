@@ -1,0 +1,82 @@
+name: EGCSO Rapport CI/CD Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Se déclenche à chaque fois qu'un tag commençant par 'v' est poussé (ex: v2.1.0)
+
+jobs:
+  build-and-release:
+    name: Build and Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Requis pour créer des Releases et uploader des assets
+
+    steps:
+      - name: 📥 Récupération du code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Configuration de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: 📦 Installation des dépendances
+        run: npm ci
+
+      - name: 🔍 Vérification du code (Linter & Types)
+        run: npm run lint
+
+      - name: ⚙️ Compilation de production
+        run: npm run build
+
+      - name: 📂 Préparation du pack de production pré-compilé
+        run: |
+          # Création d'un dossier temporaire propre pour la distribution
+          mkdir -p release_package/config
+          mkdir -p release_package/assets
+
+          # Copie des fichiers compilés de production
+          cp -r dist release_package/
+
+          # Copie des fichiers de lancement et utilitaires système
+          cp start.bat release_package/
+          cp update.bat release_package/
+          cp update.mjs release_package/
+          cp VERSION release_package/
+          cp README.md release_package/
+          cp package.json release_package/
+          cp package-lock.json release_package/
+          cp server.ts release_package/
+          cp -r assets/* release_package/assets/
+
+          # Copie des configurations d'usine par défaut uniquement (Garde-fou : pas de données utilisateur !)
+          cp config/*.default.json release_package/config/
+
+          # Archivage au format ZIP
+          cd release_package
+          zip -r ../egcso-rapport-${{ github.ref_name }}.zip ./*
+          cd ..
+
+      - name: 🚀 Création de la Release GitHub et mise en ligne du pack
+        uses: softprops/action-gh-release@v2
+        with:
+          name: EGCSO Rapport ${{ github.ref_name }}
+          body: |
+            ## 🎉 Nouvelle version stable ${{ github.ref_name }} disponible !
+
+            Cette version est automatiquement compilée et prête à l'emploi.
+
+            ### 💾 Procédure d'installation pour les postes de l'EGCSO :
+            1. **Nouvelle installation** : Téléchargez l'archive pré-compilée ci-dessous (`egcso-rapport-${{ github.ref_name }}.zip`), extrayez-la dans le dossier de votre choix, puis lancez `start.bat`.
+            2. **Mise à jour** : Ouvrez l'application, allez dans les **Paramètres**, vérifiez la mise à jour, fermez l'application, puis exécutez simplement `update.bat` dans votre dossier actuel. Toutes vos données d'activité existantes seront préservées et sauvegardées avant la mise à jour.
+
+            ---
+            *Généré automatiquement par le système de CI/CD EGCSO Rapport.*
+          draft: false
+          prerelease: false
+          files: |
+            egcso-rapport-${{ github.ref_name }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
