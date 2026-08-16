@@ -1,1 +1,181 @@
 @import "tailwindcss";
+
+.field-line {
+  border: 1px solid #cbd5e1;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+}
+
+.field-line span {
+  min-width: 150px;
+  color: #475569;
+  font-weight: 800;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.field-line strong {
+  color: #064e3b;
+  font-weight: 800;
+}
+
+.field-line em {
+  flex: 1;
+  border-bottom: 1px dotted #64748b;
+  min-height: 20px;
+}
+
+.section-heading {
+  background: #064e3b;
+  color: #ffffff;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 4px 4px 0 0;
+}
+
+.check-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 12px;
+}
+
+.check-table th,
+.check-table td {
+  border: 1px solid #94a3b8;
+  padding: 5px 6px;
+  height: 30px;
+}
+
+.check-table th {
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 900;
+  text-align: center;
+}
+
+.check-table th:first-child {
+  width: 24%;
+}
+
+.check-table th:nth-child(2),
+.check-table th:nth-child(3),
+.check-table th:nth-child(4),
+.check-table th:nth-child(5) {
+  width: 10%;
+}
+
+.item-cell {
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.box-cell {
+  text-align: center;
+}
+
+.box-cell span {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid #334155;
+}
+
+.observation-cell {
+  width: 36%;
+}
+
+.notes-box {
+  border: 1px solid #94a3b8;
+  min-height: 72px;
+  background-image: linear-gradient(#ffffff 27px, #cbd5e1 28px);
+  background-size: 100% 28px;
+}
+
+.signature-grid {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+
+.signature-card {
+  border: 1px solid #334155;
+  min-height: 110px;
+  padding: 12px;
+}
+
+.signature-title {
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #064e3b;
+}
+
+.signature-line {
+  margin-top: 58px;
+  border-top: 1px solid #64748b;
+  padding-top: 5px;
+  text-align: center;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.avoid-break {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 9mm;
+  }
+
+  body {
+    background: #ffffff !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-sheet,
+  .print-sheet * {
+    visibility: visible;
+  }
+
+  .print-sheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .check-table th,
+  .check-table td {
+    padding: 3px 5px;
+    height: 24px;
+  }
+
+  .section-heading {
+    color: #000000 !important;
+    background: #e5e7eb !important;
+    border: 1px solid #000000;
+  }
+}
