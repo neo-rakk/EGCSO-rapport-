@@ -243,7 +243,7 @@ export default function App() {
     { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
     { id: "form", label: "Nouveau Rapport", icon: FileText, action: () => setFormInitialData(null) },
     { id: "list", label: "Base de rapports", icon: FolderSearch },
-    { id: "blankSheet", label: "Fiche vierge suivi", icon: ClipboardList },
+    { id: "blankSheet", label: "Fiche de suivi", icon: ClipboardList },
     { id: "settings", label: "Paramètres", icon: Settings2 }
   ];
 
