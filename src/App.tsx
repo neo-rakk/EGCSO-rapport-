@@ -4,10 +4,12 @@ import Dashboard from "./components/Dashboard";
 import ReportForm from "./components/ReportForm";
 import ReportList from "./components/ReportList";
 import Settings from "./components/Settings";
+import BlankFollowUpSheet from "./components/BlankFollowUpSheet";
 import { 
   LayoutDashboard, 
   FileText, 
   FolderSearch, 
+  ClipboardList,
   Settings2, 
   Menu, 
   X,
@@ -18,7 +20,7 @@ import {
 
 export default function App() {
   // Navigation
-  const [currentView, setCurrentView] = useState<"dashboard" | "form" | "list" | "settings">("dashboard");
+  const [currentView, setCurrentView] = useState<"dashboard" | "form" | "list" | "blankSheet" | "settings">("dashboard");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Core App State
@@ -241,6 +243,7 @@ export default function App() {
     { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
     { id: "form", label: "Nouveau Rapport", icon: FileText, action: () => setFormInitialData(null) },
     { id: "list", label: "Base de rapports", icon: FolderSearch },
+    { id: "blankSheet", label: "Fiche de suivi", icon: ClipboardList },
     { id: "settings", label: "Paramètres", icon: Settings2 }
   ];
 
@@ -384,6 +387,14 @@ export default function App() {
               onConvertConstat={handleConvertConstat}
               onDelete={handleDeleteReport}
               onViewHtml={handleViewHtml}
+            />
+          )}
+
+          {currentView === "blankSheet" && (
+            <BlankFollowUpSheet
+              units={units}
+              companyName={settings.companyName}
+              departmentName={settings.departmentName}
             />
           )}
 
