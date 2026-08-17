@@ -1,73 +1,191 @@
 @echo off
+chcp 65001 >nul 2>&1
 title EGCSO Rapport (Production)
 color 0B
+setlocal enabledelayedexpansion
+
+:: Marqueur pour n'ouvrir le navigateur qu'au PREMIER demarrage
+set "FIRST_RUN=1"
+
 echo ======================================================================
 echo                     EGCSO Rapport (EPIC EGCSO ORAN)
-echo               SYSTÈME DE RAPPORTS ET SUIVI DE MAINTENANCE
+echo               SYSTEME DE RAPPORTS ET SUIVI DE MAINTENANCE
 echo ======================================================================
 echo.
 
-:: 1. CRÉATION AUTOMATIQUE DU RÉPERTOIRE DE STOCKAGE EXTERNE (Garde-fou Sécurité)
+:: =========================================================================
+:: ETAPE 0 : VERIFICATION AUTOMATIQUE DES PRE-REQUIS
+:: =========================================================================
+where node >nul 2>&1
+if %errorlevel% neq 0 (
+    echo.
+    echo  [PRE-REQUIS] Node.js n'est pas installe sur ce poste.
+    echo.
+    echo  Le programme va lancer l'installation automatique des pre-requis.
+    echo  Une connexion Internet est necessaire.
+    echo.
+    pause
+    call "%~dp0install-prerequisites.bat"
+    if %errorlevel% neq 0 (
+        echo [ERREUR] Les pre-requis n'ont pas pu etre installes.
+        echo  Consultez le message ci-dessus pour resoudre le probleme.
+        pause
+        exit /b 1
+    )
+    :: Le PATH a pu changer, on relance start.bat dans un nouveau process
+    echo.
+    echo  [Info] Redemarrage de l'application avec le PATH mis a jour...
+    echo  Fermeture de cette fenetre dans 3 secondes...
+    timeout /t 3 /nobreak >nul
+    start "" cmd /c "%~f0"
+    exit /b 0
+)
+
+:: Verifier aussi npm
+where npm >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [PRE-REQUIS] npm non trouve malgre Node.js installe.
+    echo  Si vous venez d'installer Node.js, fermez et relancez ce script.
+    pause
+    exit /b 1
+)
+
+:: Afficher les versions detectees
+for /f "tokens=*" %%v in ('node --version') do set "NODE_VER=%%v"
+for /f "tokens=*" %%v in ('npm --version') do set "NPM_VER=%%v"
+echo  [Pre-requis OK] Node.js !NODE_VER! / npm v!NPM_VER!
+echo.
+
+:: =========================================================================
+:: ETAPE 1 : CREATION DU DOSSIER DE STOCKAGE
+:: =========================================================================
 if not exist "C:\EGCSO_Maintenance" (
-    echo [Initialisation] Création du dossier de stockage central : C:\EGCSO_Maintenance...
+    echo  [1/4] [Initialisation] Creation du dossier de stockage C:\EGCSO_Maintenance...
     mkdir "C:\EGCSO_Maintenance" 2>nul
     mkdir "C:\EGCSO_Maintenance\reports" 2>nul
-    mkdir "C:\EGCSO_Maintenance\photos" 2>nul
-    echo [OK] Dossier de stockage prêt.
+    mkdir "C:\EGCSO_Maintenance\exports_pdf" 2>nul
+    echo  [OK] Dossier de stockage pret.
+    echo.
+) else (
+    echo  [1/4] [OK] Dossier de stockage deja present.
     echo.
 )
 
-:: 2. GÉNÉRATION AUTOMATIQUE DU RACCOURCI SUR LE BUREAU AVEC LOGO OFFICIEL
+:: =========================================================================
+:: ETAPE 2 : RACCOURCI BUREAU
+:: =========================================================================
 set "SHORTCUT_PATH=%USERPROFILE%\Desktop\EGCSO Rapport.lnk"
 if not exist "%SHORTCUT_PATH%" (
-    echo [Initialisation] Premier lancement détecté...
-    echo [Initialisation] Création automatique du raccourci sur votre Bureau Windows...
-    
-    :: Génération à la volée d'un script VBS pour créer le raccourci Windows natif
+    echo  [2/4] [Initialisation] Creation du raccourci Bureau...
     echo set WshShell = WScript.CreateObject^("WScript.Shell"^) > "%temp%\CreateShortcut.vbs"
     echo set oShellLink = WshShell.CreateShortcut^("%SHORTCUT_PATH%"^) >> "%temp%\CreateShortcut.vbs"
     echo oShellLink.TargetPath = "%~dp0start.bat" >> "%temp%\CreateShortcut.vbs"
     echo oShellLink.WorkingDirectory = "%~dp0" >> "%temp%\CreateShortcut.vbs"
     echo oShellLink.Description = "EGCSO Rapport - Suivi de Maintenance" >> "%temp%\CreateShortcut.vbs"
-    echo oShellLink.IconLocation = "%~dp0assets\icon.ico" >> "%temp%\CreateShortcut.vbs"
+    echo oShellLink.IconLocation = "%~dp0public\icon.ico, 0" >> "%temp%\CreateShortcut.vbs"
     echo oShellLink.Save >> "%temp%\CreateShortcut.vbs"
-    
-    :: Exécution et nettoyage du script temporaire
-    cscript //nologo "%temp%\CreateShortcut.vbs"
-    del "%temp%\CreateShortcut.vbs"
-    
-    echo [OK] Raccourci "EGCSO Rapport" créé avec succès sur votre Bureau !
+    cscript //nologo "%temp%\CreateShortcut.vbs" >nul 2>&1
+    del "%temp%\CreateShortcut.vbs" 2>nul
+    echo  [OK] Raccourci Bureau cree.
+    echo.
+) else (
+    echo  [2/4] [OK] Raccourci Bureau deja present.
     echo.
 )
 
-:: 3. BOUCLE DU SERVEUR DE PRODUCTION AVEC REPRISE AUTOMATIQUE POST-UPDATE
+:: =========================================================================
+:: ETAPE 3 : INSTALLATION DES DEPENDANCES
+:: =========================================================================
+if not exist "node_modules" (
+    echo  [3/4] Installation des dependances - cela peut prendre plusieurs minutes...
+    echo  ---------------------------------------------------------------
+    echo.
+    call npm install --progress=false
+    echo.
+    if %errorlevel% neq 0 (
+        echo  [ERREUR] L'installation des dependances a echoue.
+        echo  Verifiez votre connexion Internet et relancez start.bat
+        pause
+        exit /b 1
+    )
+    echo  [OK] Dependances installees avec succes.
+    echo.
+) else (
+    echo  [3/4] [OK] Dependances deja installees.
+    echo.
+)
+
+:: =========================================================================
+:: ETAPE 4 : COMPILATION DE L'APPLICATION
+:: =========================================================================
+if not exist ".next\standalone\.next\static" (
+    echo  [4/4] Premiere compilation de l'application...
+    echo  [INFO] Cette etape dure environ 1 a 3 minutes.
+    echo  ---------------------------------------------------------------
+    echo.
+    call npm run build
+    echo.
+    if %errorlevel% neq 0 (
+        echo  [ERREUR] La compilation a echoue.
+        echo  Consultez les erreurs ci-dessus.
+        pause
+        exit /b 1
+    )
+    echo  [OK] Compilation terminee avec succes.
+    echo.
+) else (
+    echo  [4/4] [OK] Application deja compilee.
+    echo.
+)
+
+:: =========================================================================
+:: BOUCLE DU SERVEUR AVEC REPRISE AUTOMATIQUE
+:: =========================================================================
 :SERVER_LOOP
-:: Garde-fou : attente si une mise à jour automatique est en cours d'application par update.mjs
+
+:: Garde-fou : attente si mise a jour en cours
 if exist "update_in_progress.lock" (
-    echo [Mise a jour] Une mise a jour automatique est en cours d'installation...
-    echo [Mise a jour] En attente de la liberation et du remplacement des fichiers...
-    timeout /t 2 /nobreak >nul
+    echo  [Mise a jour] Installation en cours, attente...
+    timeout /t 3 /nobreak >nul
     goto SERVER_LOOP
 )
 
-if not exist "dist" (
-    echo [Préparation] Compilation initiale détectée. Installation des dépendances...
-    call npm install --no-audit --no-fund
-    echo.
-    echo [Préparation] Compilation de l'application en mode Production...
+:: Apres une mise a jour, il faut recompiler
+if exist "rebuild_required.flag" (
+    echo  [Mise a jour] Recompilation apres mise a jour...
+    del "rebuild_required.flag" 2>nul
+    call npm install --progress=false
     call npm run build
-) else (
-    echo [OK] Code applicatif à jour et pré-compilé.
+    echo  [OK] Recompilation terminee.
+    echo.
 )
+
+:: Ouvrir le navigateur UNIQUEMENT au premier demarrage
+if "%FIRST_RUN%"=="1" (
+    echo.
+echo ======================================================================
+echo  Demarrage du serveur EGCSO Rapport
+
+echo  URL : http://localhost:3000
+echo  Node.js : !NODE_VER! / npm : v!NPM_VER!
+echo ======================================================================
 echo.
-echo Démarrage du serveur de Production EGCSO Rapport...
-echo L'application est accessible à l'adresse : http://localhost:3000
-echo.
-start http://localhost:3000
-call npm start
+    start http://localhost:3000
+    set "FIRST_RUN=0"
+) else (
+    echo.
+    echo  [Serveur] Redemarrage a !time!
+    echo.
+)
+
+if exist ".next\standalone\server.js" (
+    node .next\standalone\server.js
+) else (
+    call npm start
+)
 
 echo.
-echo [Information] Redémarrage automatique du serveur suite à une mise à jour ou interruption...
-timeout /t 3 /nobreak >nul
+echo  [Serveur] Arrete. Redemarrage automatique dans 5 secondes...
+echo  Presser Ctrl+C pour arreter definitivement
+timeout /t 5 /nobreak >nul
 goto SERVER_LOOP
-
