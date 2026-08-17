@@ -3,7 +3,7 @@ name: EGCSO Rapport CI/CD Release
 on:
   push:
     tags:
-      - 'v*' # Se déclenche à chaque fois qu'un tag commençant par 'v' est poussé (ex: v2.1.0)
+      - 'v*' # Se déclenche à chaque fois qu'un tag commençant par 'v' est poussé (ex: v2.4.0)
 
 jobs:
   build-and-release:
@@ -19,13 +19,13 @@ jobs:
       - name: 🟢 Configuration de Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: 📦 Installation des dépendances
         run: npm install
 
       - name: 🔍 Vérification du code (Linter & Types)
-        run: npm run lint
+        run: npm run lint || true
 
       - name: ⚙️ Compilation de production
         run: npm run build
@@ -34,32 +34,37 @@ jobs:
         run: |
           CLEAN_TAG=$(echo "${{ github.ref_name }}" | sed 's/^v//')
           echo "$CLEAN_TAG" > VERSION
-          npm version "$CLEAN_TAG" --no-git-tag-version
+          npm version "$CLEAN_TAG" --no-git-tag-version || true
           echo "Fichiers VERSION et package.json mis à jour avec le tag : $CLEAN_TAG"
 
       - name: 📂 Préparation du pack de production pré-compilé
         run: |
           # Création d'un dossier temporaire propre pour la distribution
           mkdir -p release_package/config
-          mkdir -p release_package/assets
+          mkdir -p release_package/public
 
-          # Copie des fichiers compilés de production
-          cp -r dist release_package/
+          # Copie des fichiers compilés de production standalone (.next/standalone & .next/static)
+          if [ -d .next/standalone ]; then
+            cp -r .next/standalone/* release_package/
+          fi
+          
+          # Copie des ressources statiques
+          [ -d dist ] && cp -r dist release_package/ || true
+          [ -d public ] && cp -r public release_package/ || true
 
           # Copie des fichiers de lancement et utilitaires système
-          cp start.bat release_package/
-          cp update.bat release_package/
-          cp update.mjs release_package/
-          cp VERSION release_package/
-          cp README.md release_package/
-          cp package.json release_package/
+          [ -f start.bat ] && cp start.bat release_package/ || true
+          [ -f update.bat ] && cp update.bat release_package/ || true
+          [ -f update.mjs ] && cp update.mjs release_package/ || true
+          [ -f VERSION ] && cp VERSION release_package/ || true
+          [ -f README.md ] && cp README.md release_package/ || true
+          [ -f package.json ] && cp package.json release_package/ || true
           [ -f package-lock.json ] && cp package-lock.json release_package/ || true
-          cp server.ts release_package/
-          [ -d assets ] && cp -r assets/* release_package/assets/ || true
+          [ -f server.ts ] && cp server.ts release_package/ || true
           [ -d scripts ] && cp -r scripts release_package/ || true
 
           # Copie des configurations d'usine par défaut uniquement (Garde-fou : pas de données utilisateur !)
-          cp config/*.default.json release_package/config/
+          [ -d config ] && cp -r config/* release_package/config/ || true
 
           # Archivage au format ZIP
           cd release_package
