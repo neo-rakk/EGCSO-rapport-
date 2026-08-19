@@ -38,7 +38,7 @@ export function getResolvedStorageRoot(): string {
   if (path.isAbsolute(targetPath)) {
     return targetPath;
   }
-  return path.resolve(process.cwd(), targetPath);
+  return path.resolve(/*turbopackIgnore: true*/ process.cwd(), targetPath);
 }
 
 export function ensureStorageStructure(): void {
@@ -47,11 +47,11 @@ export function ensureStorageStructure(): void {
   const exportsDir = path.join(root, "exports_pdf");
   const dbPath = path.join(root, "index_db.json");
 
-  if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true });
-  if (!fs.existsSync(reportsDir)) fs.mkdirSync(reportsDir, { recursive: true });
-  if (!fs.existsSync(exportsDir)) fs.mkdirSync(exportsDir, { recursive: true });
-  if (!fs.existsSync(dbPath)) {
-    fs.writeFileSync(dbPath, JSON.stringify({ reports: [] }, null, 2), "utf-8");
+  if (!fs.existsSync(/*turbopackIgnore: true*/ root)) fs.mkdirSync(/*turbopackIgnore: true*/ root, { recursive: true });
+  if (!fs.existsSync(/*turbopackIgnore: true*/ reportsDir)) fs.mkdirSync(/*turbopackIgnore: true*/ reportsDir, { recursive: true });
+  if (!fs.existsSync(/*turbopackIgnore: true*/ exportsDir)) fs.mkdirSync(/*turbopackIgnore: true*/ exportsDir, { recursive: true });
+  if (!fs.existsSync(/*turbopackIgnore: true*/ dbPath)) {
+    fs.writeFileSync(/*turbopackIgnore: true*/ dbPath, JSON.stringify({ reports: [] }, null, 2), "utf-8");
   }
 }
 
