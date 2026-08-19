@@ -1,0 +1,8 @@
+{
+  "storageRoot": "C:/EGCSO_Maintenance",
+  "companyName": "EPIC EGCSO",
+  "departmentName": "Service Maintenance",
+  "referenceFormat": "EGCSO-[CODE_UNITE]-[TYPE]-[AAAAMMJJ]-[SEQ]",
+  "githubRepo": "neo-rakk/EGCSO-rapport-",
+  "chiefMaintenanceName": "BOUARFA HAKIM"
+}

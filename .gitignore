@@ -1,17 +1,1 @@
-node_modules/
-build/
-dist/
-coverage/
-.DS_Store
-*.log
-.env*
-!.env.example
-
-# Custom User Configuration & Local Storage
-config/unites.json
-config/categories_pannes.json
-config/settings.json
-EGCSO_Maintenance/
-_update_tmp/
-update_in_progress.lock
-backups/
+node_modules
